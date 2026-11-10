@@ -166,6 +166,12 @@ table.xl tfoot th.l{background:transparent}
 table.xl tfoot th,table.xl tfoot td{border:0;border-top:2px solid var(--ink);background:transparent;font-weight:700}
 table.xl tfoot td{font-family:var(--font-mono);text-align:right;padding:8px 6px;font-size:1.05rem}
 table.xl thead th{display:none}
+.bin{gap:12px}
+.bin fieldset{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
+.bin legend{font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:0;margin-bottom:6px}
+.ck{display:inline-flex;gap:6px;align-items:center;padding:5px 12px;border:1px solid var(--line);border-radius:99px;background:var(--bg);font-size:.88rem;cursor:pointer}
+.ck:has(input:checked){background:var(--accent-soft);border-color:var(--accent)}
+.bin select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;min-width:12rem}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:4px;font-weight:600;z-index:20}
 @media (prefers-reduced-motion:no-preference){button{transition:filter .12s}button:hover{filter:brightness(1.08)}}
 body{margin:0}
@@ -244,6 +250,17 @@ body{margin:0}
       <button class="ghost" id="qAdd">Ajouter une personne</button>
       <button class="ghost" id="qClear">Effacer cette colonne</button>
     </div>
+  </section>
+
+  <section class="panel bin" id="binPanel">
+    <div class="panel-head">
+      <h2>Binôme</h2>
+      <p class="note">Un gars a rempli pour deux ? Copie ses heures, son lieu et son n° d'affaire chez l'autre : mêmes heures, même déplacement.</p>
+    </div>
+    <fieldset><legend>Copier depuis</legend><select id="binSrc" aria-label="Copier depuis"></select></fieldset>
+    <fieldset id="binTargetsBox"><legend>Chez</legend><span id="binTargets" class="chips"></span></fieldset>
+    <fieldset id="binDaysBox"><legend>Jours</legend><span id="binDays" class="chips"></span></fieldset>
+    <div class="btns"><button id="binApply">Ajouter le binôme</button></div>
   </section>
 
   <section class="panel">
@@ -419,7 +436,7 @@ function render(){
   h+='<tr class="total"><th class="rowh">TOTAL</th>'+cols.map((c,ci)=>c.spacer?'<td class="spacer"></td>':`<td id="ct${ci}"></td>`).join('')+'<td id="gt"></td></tr>';
   h+='</tbody>';
   $('grid').innerHTML=h;
-  updateTotals();renderChecks();renderAff();renderPay();fillWho();renderTeam();saveWeek();
+  updateTotals();renderChecks();renderAff();renderPay();fillWho();renderTeam();fillBin();saveWeek();
 }
 
 function updateTotals(){
@@ -463,11 +480,12 @@ function affData(){
     if(c.spacer)return;
     const rep=reports.find(r=>r.col===ci);
     if(rep&&grid[ci].every(x=>x.h===null||x.auto)){
-      rep.lines.forEach(l=>{const h=num(l.heures);if(!h)return;ent.push({ci,type:l.type||'',numero:(l.numero||'').trim(),trav:(l.travaux||'').trim(),h})});
+      rep.lines.forEach(l=>{const h=num(l.heures);if(!h)return;ent.push({ci,d:l.date?dayIdx(l.date):-1,client:(l.client||'').trim(),type:l.type||'',numero:(l.numero||'').trim(),trav:(l.travaux||'').trim(),h})});
     }else{
-      const t=total(ci);if(!t)return;
-      const lieux=[...new Set(grid[ci].flatMap(x=>x.lieu.split(' / ').map(s=>s.trim()).filter(Boolean)))].join(' / ');
-      ent.push({ci,type:(c.manual&&c.manual.type)||'R\u00e9gie',numero:(c.manual&&c.manual.aff)||'',trav:(c.manual&&c.manual.travaux)||lieux||'Saisie manuelle',h:t});
+      grid[ci].forEach((x,d)=>{
+        if(!x.h)return;
+        ent.push({ci,d,client:x.lieu||'',type:(c.manual&&c.manual.type)||'R\u00e9gie',numero:(c.manual&&c.manual.aff)||'',trav:(c.manual&&c.manual.travaux)||x.lieu||'Saisie manuelle',h:x.h});
+      });
     }
   });
   return ent;
@@ -496,10 +514,9 @@ function affTable(editable){
     const ch=rows.slice(i,i+N),pad=N-ch.length,sum=ch.reduce((a,g)=>a+g.tot,0);
     h+='<tr class="xd"><th class="l">Devis</th>'+ch.map(g=>{
       if(g.num)return `<td>${esc(g.num)}</td>`;
-      return editable?`<td><input data-un="${encodeURIComponent(g.ukey)}" placeholder="N\u00b0 ?" aria-label="Num\u00e9ro pour ${esc([...g.travs].join(' / '))}"></td>`:'<td><span class="todo">N\u00b0 ?</span></td>';
+      return editable?`<td><input data-un="${encodeURIComponent(g.ukey)}" placeholder="N\u00b0 ?" title="${esc([...g.travs].join(' / '))}" aria-label="Num\u00e9ro pour ${esc([...g.travs].join(' / '))}"></td>`:'<td><span class="todo">N\u00b0 ?</span></td>';
     }).join('')+'<td></td>'.repeat(pad)+'<td></td></tr>';
     h+='<tr class="hr"><th class="l">Heures</th>'+ch.map(g=>`<td>${fmt(g.tot)}</td>`).join('')+'<td></td>'.repeat(pad)+`<td class="tt">${fmt(sum)}</td></tr>`;
-    if(editable)h+='<tr class="tv"><th class="l"></th>'+ch.map(g=>`<td>${esc([...g.travs].join(' / '))}</td>`).join('')+'<td></td>'.repeat(pad+1)+'</tr>';
   }
   const gt=rows.reduce((a,g)=>a+g.tot,0);
   h+=`</tbody><tfoot><tr><th class="l" colspan="${N}">Total g\u00e9n\u00e9ral</th><td colspan="2">${fmt(gt)} h</td></tr></tfoot>`;
@@ -622,6 +639,44 @@ function addPerson(){
 }
 $('tAdd').onclick=addPerson;
 $('tName').addEventListener('keydown',e=>{if(e.key==='Enter')addPerson()});
+function dayDate(d){const m=week&&week.monday?new Date(week.monday):thisMonday();m.setDate(m.getDate()+d);return ymd(m)}
+function fillBin(){
+  const s=$('binSrc'),cur=s.value;
+  s.innerHTML=cols.map((c,ci)=>c.spacer?'':`<option value="${ci}">${esc(c.name)}</option>`).join('');
+  if(cur&&cols[+cur]&&!cols[+cur].spacer)s.value=cur;
+  else{const f=cols.findIndex((c,ci)=>!c.spacer&&total(ci)>0);if(f>=0)s.value=f}
+  refreshBin();
+}
+function refreshBin(){
+  const src=+$('binSrc').value;
+  $('binTargets').innerHTML=cols.map((c,ci)=>(c.spacer||ci===src)?'':`<label class="ck"><input type="checkbox" value="${ci}">${esc(c.name)}</label>`).join('');
+  $('binDays').innerHTML=DAYS.map((d,i)=>`<label class="ck"><input type="checkbox" value="${i}" ${grid[src]&&grid[src][i].h?'checked':''}>${d.slice(0,3)}</label>`).join('');
+}
+$('binSrc').onchange=refreshBin;
+$('binApply').onclick=()=>{
+  if(sample){toast("Charge d'abord des rapports ou saisis des heures");return}
+  const src=+$('binSrc').value;
+  const tg=[...$('binTargets').querySelectorAll('input:checked')].map(i=>+i.value);
+  const dy=[...$('binDays').querySelectorAll('input:checked')].map(i=>+i.value);
+  if(!tg.length||!dy.length){toast('Choisis le bin\u00f4me et au moins un jour');return}
+  const ent=affData().filter(e=>e.ci===src&&dy.includes(e.d));
+  if(!ent.length){toast('Aucune heure \u00e0 copier ces jours-l\u00e0');return}
+  acted=true;
+  tg.forEach(t=>{
+    let rep=reports.find(r=>r.col===t);
+    if(!rep){rep={file:'Bin\u00f4me de '+cols[src].name,tech:cols[t].name,col:t,sum:0,notes:[],lines:[]};reports.push(rep)}
+    rep.lines=rep.lines.filter(l=>!l.date||!dy.includes(dayIdx(l.date)));
+    dy.forEach(d=>{
+      const es=ent.filter(e=>e.d===d);
+      grid[t][d]={h:es.length?es.reduce((a,e)=>a+e.h,0):null,lieu:es.length?grid[src][d].lieu:'',auto:true};
+    });
+    ent.forEach(e=>rep.lines.push({date:dayDate(e.d),client:e.client,type:e.type,numero:e.numero,travaux:e.trav,heures:String(e.h),donneurOrdre:'',statut:'Termin\u00e9',_tech:cols[t].name}));
+    rep.sum=rep.lines.reduce((a,l)=>a+num(l.heures),0);
+    rep.notes=rep.notes.filter(n=>!n.startsWith('Bin\u00f4me'));
+    rep.notes.push('Bin\u00f4me de '+cols[src].name+' : m\u00eames heures et m\u00eame lieu copi\u00e9s.');
+  });
+  render();toast('Bin\u00f4me ajout\u00e9 : '+tg.map(t=>cols[t].name).join(', '));
+};
 function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
 function thisMonday(){const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));return d}
 function isoWeek(dt){const d=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));const day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);const y=d.getUTCFullYear();return {w:Math.ceil(((d-Date.UTC(y,0,1))/864e5+1)/7),y}}

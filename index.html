@@ -5,30 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Pointage SLVS</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: bandeau titre + zone de dépôt, grille de pointage façon feuille Excel (une colonne par technicien), puis contrôles et heures par affaire. */
 :root{
-  --bg:#e9eef0;
-  --panel:#ffffff;
-  --ink:#16252b;
-  --muted:#5b6d75;
-  --line:#cdd7db;
-  --accent:#0b5c6b;
-  --accent-ink:#ffffff;
-  --accent-soft:#d6ebef;
-  --warn:#9a5b00;
-  --warn-soft:#fbeccb;
-  --ok:#1d6b3a;
-  --head:#dbe4e8;
-  --font-display:"Barlow Condensed","Arial Narrow",sans-serif;
-  --font-body:"Barlow",system-ui,sans-serif;
-  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --bg:#FBF7F3;--panel:#ffffff;--ink:#1A1A1A;--muted:#65605C;--line:#E2DCD8;
+  --accent:#E8432E;--accent-ink:#ffffff;--accent-soft:#FBE1DB;
+  --warn:#8a4b00;--warn-soft:#FBE6C8;--ok:#23804f;--head:#F1ECE8;
+  --font-display:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-body:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"SFMono-Regular","Consolas","Roboto Mono",monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#10191d;--panel:#18262c;--ink:#e3ecef;--muted:#92a6ae;--line:#2c3f47;--accent:#4fb3c4;--accent-ink:#06242b;--accent-soft:#1c3b44;--warn:#f0b75a;--warn-soft:#3a2b0d;--ok:#6bcf8f;--head:#21343b;color-scheme:dark}}
+  --bg:#17140F;--panel:#221E18;--ink:#F2ECDF;--muted:#A39A89;--line:#3A342A;--accent:#FF6B4E;--accent-ink:#1A0F0B;--accent-soft:#3A2018;--warn:#F0B75A;--warn-soft:#3A2B0D;--ok:#6FCB92;--head:#2C271F;color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#10191d;--panel:#18262c;--ink:#e3ecef;--muted:#92a6ae;--line:#2c3f47;--accent:#4fb3c4;--accent-ink:#06242b;--accent-soft:#1c3b44;--warn:#f0b75a;--warn-soft:#3a2b0d;--ok:#6bcf8f;--head:#21343b;color-scheme:dark}
+  --bg:#17140F;--panel:#221E18;--ink:#F2ECDF;--muted:#A39A89;--line:#3A342A;--accent:#FF6B4E;--accent-ink:#1A0F0B;--accent-soft:#3A2018;--warn:#F0B75A;--warn-soft:#3A2B0D;--ok:#6FCB92;--head:#2C271F;color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45;
   padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -121,12 +111,13 @@ button.sm{padding:5px 11px;font-size:.85rem}
 .pfoot .sig span{display:block;min-width:11rem;border-top:1px solid var(--ink);padding-top:4px;color:var(--ink)}
 @page{size:A4 landscape;margin:10mm}
 @media print{
+  #pay[hidden]{display:flex!important}
   html,body{background:#fff!important}
   body{padding:0!important}
   main{display:block;max-width:none}
   main>*:not(#pay),.toast{display:none!important}
   #pay{width:100%;
-    --bg:#f4f6f7;--panel:#fff;--ink:#111;--muted:#555;--line:#c9d1d4;--accent:#0b5c6b;--accent-ink:#fff;--accent-soft:#d6ebef;--warn:#9a5b00;--head:#e6ecee;
+    --bg:#fff;--panel:#fff;--ink:#111;--muted:#555;--line:#cfc8c2;--accent:#E8432E;--accent-ink:#fff;--accent-soft:#FBE1DB;--warn:#8a4b00;--head:#F1ECE8;
     -webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11pt}
   #pay .sheet{border:0;border-radius:0;padding:0}
   #pay .noprint{display:none!important}
@@ -172,6 +163,42 @@ table.xl thead th{display:none}
 .ck{display:inline-flex;gap:6px;align-items:center;padding:5px 12px;border:1px solid var(--line);border-radius:99px;background:var(--bg);font-size:.88rem;cursor:pointer}
 .ck:has(input:checked){background:var(--accent-soft);border-color:var(--accent)}
 .bin select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;min-width:12rem}
+[hidden]{display:none!important}
+.steps{display:flex;gap:8px;flex-wrap:wrap}
+.steps button{display:flex;align-items:center;gap:8px;background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:10px 14px;border-radius:6px;font-weight:600;flex:1 1 9rem;justify-content:flex-start}
+.steps button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.steps .sn{display:inline-grid;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-family:var(--font-mono);font-size:.85rem}
+.steps button.on .sn{background:var(--accent-ink);color:var(--accent)}
+.bd{margin-left:auto;font-family:var(--font-mono);font-size:.78rem;padding:1px 8px;border-radius:99px;background:var(--bg);color:var(--muted)}
+.bd.warn{background:var(--warn-soft);color:var(--warn)}
+.bd:empty{display:none}
+.stepbox{display:flex;flex-direction:column;gap:14px}
+.stack{display:flex;flex-direction:column;gap:8px}
+#cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,26rem),1fr));gap:12px}
+.pc{border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:12px;background:var(--bg);min-width:0}
+.pc.closed{flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px}
+.pc-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.pc-head b,.pc.closed b{font-family:var(--font-display);font-size:1.2rem;letter-spacing:.05em}
+.pc-tot{font-family:var(--font-mono);font-weight:600;color:var(--accent)}
+.pc-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:8px}
+.pc label{display:flex;flex-direction:column;gap:3px;font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:0}
+.pc input,.pc select{font:inherit;font-size:1rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:9px 8px;width:100%;min-width:0;text-transform:none;letter-spacing:0;font-weight:400}
+.pc-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.pc-days input{text-align:center;font-family:var(--font-mono);padding:9px 2px}
+.pc-act{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.grp{margin-bottom:14px;border-color:var(--accent)}
+.chips label.gk{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:99px;background:var(--panel);font-size:.9rem;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink)}
+.chips label.gk input{width:auto;padding:0}
+.pc .chips label.gk{flex-direction:row;font-size:.9rem}
+.pc-act .same{flex:1 1 11rem}
+#numList{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr))}
+.nc{border:1px solid var(--warn);background:var(--warn-soft);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.nc-t{font-weight:600;font-size:1.05rem;overflow-wrap:anywhere}
+.nc-m{color:var(--muted);font-size:.85rem}
+.sug{display:flex;flex-wrap:wrap;gap:6px}
+.nc input{font:inherit;font-size:1.05rem;padding:10px;border:1px solid var(--warn);border-radius:4px;background:var(--panel);color:var(--ink);width:100%;min-width:0}
+.okmsg{color:var(--ok);font-weight:600;margin:0}
+.nav{margin-top:4px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:4px;font-weight:600;z-index:20}
 @media (prefers-reduced-motion:no-preference){button{transition:filter .12s}button:hover{filter:brightness(1.08)}}
 body{margin:0}
@@ -190,31 +217,51 @@ body{margin:0}
       <label class="wk">Lundi de la semaine <input type="date" id="wkMonday"></label>
       <label class="wk">Semaines enregistrées <select id="weeksSel"></select></label>
     </div>
-    <div class="btns">
-      <button id="xlsxBtn">Télécharger Excel</button>
-      <button class="ghost" id="copyBtn">Copier pour Excel</button>
-      <button class="ghost" id="printBtn">Imprimer le résumé</button>
-      <button class="ghost" id="clearBtn">Tout vider</button>
+    <div class="btns"><button class="ghost" id="clearBtn">Tout vider</button></div>
+  </div>
+
+  <nav class="steps" id="steps" aria-label="Étapes">
+    <button data-go="1" class="on"><span class="sn">1</span>Rapports<span class="bd" id="b1"></span></button>
+    <button data-go="2"><span class="sn">2</span>Compléter<span class="bd" id="b2"></span></button>
+    <button data-go="3"><span class="sn">3</span>Numéros<span class="bd" id="b3"></span></button>
+    <button data-go="4"><span class="sn">4</span>Résumé<span class="bd" id="b4"></span></button>
+  </nav>
+
+  <div data-step="1" class="stepbox">
+    <div class="banner" id="sampleBanner" hidden>Exemple : rapport de Cédric Toutain, semaine 45. Dépose les fichiers de la semaine pour le remplacer, ou <button class="ghost sm" id="sampleStart">commence une semaine vide</button></div>
+    <div class="drop" id="drop">
+      <p><strong>Rapports de la semaine</strong><br>Dépose ici les fichiers .json reçus par mail. Chaque technicien est placé dans sa colonne, les heures sont additionnées par jour.</p>
+      <div class="btns"><button id="pick">Choisir les fichiers</button></div>
+      <input type="file" id="file" accept=".json,application/json" multiple hidden>
     </div>
+    <div id="fileMsgs" class="stack"></div>
+    <div class="btns nav"><button data-go="2">Suivant : compléter →</button></div>
   </div>
 
-  <div class="banner" id="sampleBanner" hidden>Exemple : rapport de Cédric Toutain, semaine 45. Dépose les fichiers .json de la semaine pour le remplacer.</div>
-
-  <div class="drop" id="drop">
-    <p><strong>Rapports de la semaine</strong><br>Dépose ici les fichiers .json reçus par mail. Chaque technicien est placé dans sa colonne, les heures sont additionnées par jour.</p>
-    <div class="btns"><button id="pick">Choisir les fichiers</button></div>
-    <input type="file" id="file" accept=".json,application/json" multiple hidden>
-  </div>
-
-  <section class="panel">
+  <section class="panel" data-step="2" hidden>
     <div class="panel-head">
-      <h2>Feuille de pointage</h2>
-      <p class="note">Les cases bleutées viennent des rapports. Tu peux les corriger ou remplir les autres à la main.</p>
+      <h2>Compléter la semaine</h2>
+      <label class="ck"><input type="checkbox" id="showAll"> Afficher aussi ceux qui ont un rapport</label>
     </div>
-    <div class="scroll"><table id="grid"></table></div>
+    <p class="note" id="cardsInfo"></p>
+    <div class="pc grp" id="grp">
+      <div class="pc-head"><b>Plusieurs personnes, même chantier</b></div>
+      <div class="note" style="margin:0">Coche les personnes, remplis une seule fois, puis applique. Tu pourras ensuite corriger l'une d'elles dans sa fiche.</div>
+      <div class="chips" id="grpWho"></div>
+      <div class="pc-row">
+        <label>Lieu / chantier<input id="gLieu" placeholder="ex. EURIAL" autocomplete="off"></label>
+        <label>N° devis ou régie<input id="gNum" list="numDL" placeholder="facultatif" autocomplete="off"></label>
+        <label>Type<select id="gType"><option>Régie</option><option>Devis</option></select></label>
+      </div>
+      <div class="pc-days" id="gDays"><label>Lun<input inputmode="decimal" aria-label="Lundi" data-g="0"></label><label>Mar<input inputmode="decimal" aria-label="Mardi" data-g="1"></label><label>Mer<input inputmode="decimal" aria-label="Mercredi" data-g="2"></label><label>Jeu<input inputmode="decimal" aria-label="Jeudi" data-g="3"></label><label>Ven<input inputmode="decimal" aria-label="Vendredi" data-g="4"></label><label>Sam<input inputmode="decimal" aria-label="Samedi" data-g="5"></label><label>Dim<input inputmode="decimal" aria-label="Dimanche" data-g="6"></label></div>
+      <div class="pc-act"><button class="ghost sm" id="g39">39 h</button><button class="ghost sm" id="g40">40 h</button><button id="gApply">Appliquer à la sélection</button></div>
+    </div>
+    
+    <div id="cards"></div>
+    <div class="btns nav"><button class="ghost" data-go="1">← Retour</button><button data-go="3">Suivant : numéros →</button></div>
   </section>
 
-  <section class="panel" id="teamPanel">
+  <section class="panel" id="teamPanel" data-step="2" hidden>
     <div class="panel-head">
       <h2>Équipe</h2>
       <p class="note">La liste est enregistrée et reprise chaque semaine. Ajoute ou retire quelqu'un quand il le faut.</p>
@@ -226,58 +273,32 @@ body{margin:0}
     </div>
   </section>
 
-  <section class="panel" id="quickPanel">
-    <div class="panel-head">
-      <h2>Saisie sans rapport</h2>
-      <p class="note">Pour les gars qui n'envoient pas encore de rapport, ou loués en régie sur un chantier toute la semaine. Clique aussi sur un nom dans le tableau.</p>
-    </div>
-    <div class="qgrid">
-      <label>Personne<select id="qWho"></select></label>
-      <label>Nom affiché<input id="qName" autocomplete="off"></label>
-      <label>Lieu / chantier<input id="qLieu" placeholder="ex. EURIAL" autocomplete="off"></label>
-      <label>Type<select id="qType"><option>Régie</option><option>Devis</option></select></label>
-      <label>N° affaire (facultatif)<input id="qAff" placeholder="ex. 270030" autocomplete="off"></label>
-    </div>
-    <div class="qdays" id="qDays"></div>
-    <div class="presets">
-      <span>Raccourcis :</span>
-      <button class="ghost sm" data-preset="39">39 h (8,5 × 4 + 5)</button>
-      <button class="ghost sm" data-preset="40">40 h (10 × 4)</button>
-      <button class="ghost sm" data-preset="0">Vider les jours</button>
-    </div>
-    <div class="btns">
-      <button id="qApply">Appliquer à la semaine</button>
-      <button class="ghost" id="qAdd">Ajouter une personne</button>
-      <button class="ghost" id="qClear">Effacer cette colonne</button>
-    </div>
+  <section class="panel" data-step="3" hidden>
+    <div class="panel-head"><h2>N° de devis ou de régie</h2></div>
+    <p class="note">Tape le numéro de chaque ligne. Il est mémorisé pour les semaines suivantes (même intitulé de travaux).</p>
+    <div id="numList"></div>
+    <div id="numDone" class="chips"></div>
+    <div class="scroll"><table class="xl" id="aff"></table></div>
+    <div class="btns nav"><button class="ghost" data-go="2">← Retour</button><button data-go="4">Suivant : résumé →</button></div>
   </section>
 
-  <section class="panel bin" id="binPanel">
-    <div class="panel-head">
-      <h2>Binôme</h2>
-      <p class="note">Un gars a rempli pour deux ? Copie ses heures, son lieu et son n° d'affaire chez l'autre : mêmes heures, même déplacement.</p>
-    </div>
-    <fieldset><legend>Copier depuis</legend><select id="binSrc" aria-label="Copier depuis"></select></fieldset>
-    <fieldset id="binTargetsBox"><legend>Chez</legend><span id="binTargets" class="chips"></span></fieldset>
-    <fieldset id="binDaysBox"><legend>Jours</legend><span id="binDays" class="chips"></span></fieldset>
-    <div class="btns"><button id="binApply">Ajouter le binôme</button></div>
-  </section>
-
-  <section class="panel">
+  <section class="panel" data-step="4" hidden>
     <h2>À vérifier</h2>
     <ul class="checks" id="checks"></ul>
   </section>
 
-  <section class="panel">
-    <div class="panel-head">
-      <h2>Heures par devis ou n° de régie</h2>
-      <button class="ghost sm" id="affCopy">Copier pour Excel</button>
+  <section class="panel" data-step="4" hidden>
+    <h2>Terminer</h2>
+    <div class="btns">
+      <button id="printBtn">PDF / Imprimer le résumé</button>
+      <button class="ghost" id="xlsxBtn">Télécharger Excel</button>
+      <button class="ghost" id="copyBtn">Copier la feuille pour Excel</button>
+      <button class="ghost" id="mailBtn">Envoyer par mail</button>
+      <button class="ghost" id="affCopy">Copier Devis / heures</button>
     </div>
-    <p class="note">Même présentation que le bas de ton onglet Excel : le n° de devis ou de régie, et dessous le total d'heures. Les cases orange n'ont pas de numéro : saisis-le, il est mémorisé pour les semaines suivantes (même intitulé de travaux).</p>
-    <div class="scroll"><table class="xl" id="aff"></table></div>
   </section>
 
-  <section class="panel pay" id="pay">
+  <section class="panel pay" id="pay" data-step="4" hidden>
     <div class="sheet">
       <header class="phead">
         <div><div class="brand">SLVS</div><div class="bsub">Tuyauterie industrielle · Dieppe</div></div>
@@ -293,6 +314,15 @@ body{margin:0}
     </div>
     <div class="btns noprint"><button class="ghost" id="payCopy">Copier le résumé</button><button id="payPrint">Imprimer (A4)</button></div>
     <p class="note noprint" id="payNote">Mise en page A4 paysage. « Imprimer » ouvre l'impression ; choisis « Enregistrer en PDF » pour l'envoyer.</p>
+  </section>
+
+  <section class="panel" data-step="4" hidden>
+    <div class="panel-head">
+      <h2>Modifier une case</h2>
+      <p class="note">Les cases bleutées viennent des rapports. Tu peux les corriger ici.</p>
+    </div>
+    <div class="scroll"><table id="grid"></table></div>
+    <div class="btns nav"><button class="ghost" data-go="3">← Retour</button></div>
   </section>
 </main>
 <div class="toast" id="toast" hidden></div>
@@ -400,8 +430,8 @@ async function handleFiles(files){
       if(!res.ok)msgs.push(res.msg);
     }catch(e){msgs.push(`${f.name} : fichier illisible.`)}
   }
-  render();
-  if(msgs.length)showMsgs(msgs);
+  extraMsgs=msgs;
+  if(!msgs.length&&reports.some(r=>!r.synthetic))goStep(2);else goStep(1);
 }
 let extraMsgs=[];
 function showMsgs(m){extraMsgs=m;renderChecks()}
@@ -417,7 +447,7 @@ function render(){
     $('weekLabel').textContent=t;
   }else $('weekLabel').textContent='Aucune semaine chargée';
   $('wkMonday').value=ymd(week&&week.monday?week.monday:thisMonday());
-  let h='<thead><tr><th class="rowh">NOM</th>'+cols.map((c,ci)=>c.spacer?'<th class="spacer"></th>':`<th><button class="hb" data-pick="${ci}" title="Saisie rapide">${esc(c.name)}</button></th>`).join('')+'<th>TOTAL</th></tr></thead><tbody>';
+  let h='<thead><tr><th class="rowh">NOM</th>'+cols.map((c,ci)=>c.spacer?'<th class="spacer"></th>':`<th>${esc(c.name)}</th>`).join('')+'<th>TOTAL</th></tr></thead><tbody>';
   DAYS.forEach((d,di)=>{
     h+=`<tr><th class="rowh">${d}</th>`;
     cols.forEach((c,ci)=>{
@@ -436,7 +466,7 @@ function render(){
   h+='<tr class="total"><th class="rowh">TOTAL</th>'+cols.map((c,ci)=>c.spacer?'<td class="spacer"></td>':`<td id="ct${ci}"></td>`).join('')+'<td id="gt"></td></tr>';
   h+='</tbody>';
   $('grid').innerHTML=h;
-  updateTotals();renderChecks();renderAff();renderPay();fillWho();renderTeam();fillBin();saveWeek();
+  updateTotals();renderChecks();renderAff();renderPay();renderTeam();renderComplete();renderNums();renderSteps();saveWeek();
 }
 
 function updateTotals(){
@@ -454,12 +484,9 @@ $('grid').addEventListener('input',e=>{
   else{x.lieu=t.value;t.title=t.value}
   updateTotals();renderAff();renderPay();saveWeek();
 });
-$('grid').addEventListener('click',e=>{
-  const b=e.target.closest('[data-pick]');if(!b)return;
-  $('qWho').value=b.dataset.pick;loadQuick();$('quickPanel').scrollIntoView({behavior:'smooth',block:'center'});
-});
 
 function renderChecks(){
+  $('fileMsgs').innerHTML=extraMsgs.map(m=>`<div class="banner">${esc(m)}</div>`).join('');
   const items=[];
   reports.sort((a,b)=>a.col-b.col).forEach(r=>{
     if(!r.notes.length)items.push(`<li class="ok"><span class="tag">OK</span><span><b>${esc(r.tech)}</b> : ${fmt(r.sum)} h, ${r.lines.length} ligne(s), total conforme au rapport.</span></li>`);
@@ -469,7 +496,7 @@ function renderChecks(){
   const missing=cols.filter((c,ci)=>!c.spacer&&!reports.some(r=>r.col===ci)&&!c.manual&&c.name!=='BLANCHARD').map(c=>c.name);
   if(reports.length&&missing.length)items.push(`<li><span class="tag">Sans rapport</span><span>${esc(missing.join(', '))}</span></li>`);
   {const un=affGroups().rows.filter(g=>!g.num).reduce((a,g)=>a+g.tot,0);
-   if(un>0)items.push(`<li class="w"><span class="tag">Sans n°</span><span>${fmt(un)} h sans numéro de devis ou de régie : renseigne-les dans « Heures par devis ou n° de régie ».</span></li>`)}
+   if(un>0)items.push(`<li class="w"><span class="tag">Sans n°</span><span>${fmt(un)} h sans numéro de devis ou de régie : renseigne-les à l'étape 3.</span></li>`)}
   if(!items.length)items.push('<li><span class="tag">Info</span><span>Aucun rapport chargé.</span></li>');
   $('checks').innerHTML=items.join('');
 }
@@ -496,9 +523,9 @@ function affGroups(){
     let n=e.numero;
     if(!n&&/^\d[\d ]{3,8}$/.test(e.trav))n=e.trav.replace(/\s+/g,' ').trim();
     const ukey=norm(e.type+'|'+e.trav);
-    if(!n&&assign[ukey])n=assign[ukey];
+    let fa=false;if(!n&&assign[ukey]){n=assign[ukey];fa=true}
     const key=n?'n:'+n:'u:'+ukey;
-    if(!groups.has(key))groups.set(key,{num:n,ukey,types:new Set(),travs:new Set(),per:new Map(),tot:0});
+    if(!groups.has(key))groups.set(key,{num:n,fromAssign:fa,ukey,types:new Set(),travs:new Set(),per:new Map(),tot:0});
     const g=groups.get(key);g.types.add(e.type||'?');g.travs.add(e.trav);g.per.set(e.ci,(g.per.get(e.ci)||0)+e.h);g.tot+=e.h;
     if(!people.includes(e.ci))people.push(e.ci);
   });
@@ -526,13 +553,6 @@ function renderAff(){
   $('aff').innerHTML=affTable(true);
   $('payAff').innerHTML=affTable(false);
 }
-$('aff').addEventListener('change',e=>{
-  const t=e.target.closest('[data-un]');if(!t)return;
-  const k=decodeURIComponent(t.dataset.un),v=t.value.trim();
-  if(v)assign[k]=v;else delete assign[k];
-  try{localStorage.setItem('slvs-assign',JSON.stringify(assign))}catch(_){}
-  renderAff();renderChecks();
-});
 $('affCopy').onclick=()=>{
   const {rows}=affGroups();const N=10;const L=[];
   for(let i=0;i<rows.length;i+=N){
@@ -569,47 +589,6 @@ const drop=$('drop');
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
 drop.addEventListener('drop',e=>handleFiles([...e.dataTransfer.files]));
 
-function fillWho(){
-  const cur=$('qWho').value;
-  $('qWho').innerHTML=cols.map((c,ci)=>c.spacer?'':`<option value="${ci}">${esc(c.name)}</option>`).join('');
-  if(cur&&cols[+cur]&&!cols[+cur].spacer)$('qWho').value=cur;
-}
-function loadQuick(){
-  const ci=+$('qWho').value;if(!cols[ci])return;
-  const c=cols[ci];
-  $('qName').value=c.name;
-  $('qLieu').value=(grid[ci].map(x=>x.lieu).find(Boolean))||'';
-  $('qType').value=c.manual?c.manual.type:'Régie';
-  $('qAff').value=c.manual?c.manual.aff:'';
-  DAYS.forEach((_,d)=>{$('qd'+d).value=grid[ci][d].h===null?'':fmt(grid[ci][d].h)});
-}
-function setDays(v){DAYS.forEach((_,d)=>{$('qd'+d).value=v[d]===undefined||v[d]===''?'':fmt(v[d])})}
-$('qDays').innerHTML=DAYS.map((d,i)=>`<label>${d.slice(0,3)}<input id="qd${i}" inputmode="decimal"></label>`).join('');
-$('qWho').onchange=loadQuick;
-document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{
-  const p=b.dataset.preset;
-  setDays(p==='39'?[8.5,8.5,8.5,8.5,5,'','']:p==='40'?[10,10,10,10,'','','']:[]);
-});
-$('qApply').onclick=()=>{
-  if(sample){reset();sample=false}
-  const ci=+$('qWho').value;if(!cols[ci])return;
-  const name=$('qName').value.trim().toUpperCase();if(name)cols[ci].name=name;
-  const lieu=$('qLieu').value.trim();
-  grid[ci]=DAYS.map((_,d)=>{const v=$('qd'+d).value.trim();const h=v===''?null:num(v);return {h,lieu:h?lieu:'',auto:false}});
-  cols[ci].manual={type:$('qType').value,aff:$('qAff').value.trim()};
-  reports=reports.filter(r=>r.col!==ci);
-  saveRoster();render();$('qWho').value=ci;toast(cols[ci].name+' : '+fmt(total(ci))+' h saisies');
-};
-$('qAdd').onclick=()=>{
-  if(sample){reset();sample=false}
-  cols.push({name:'NOUVEAU',spacer:false});grid.push(DAYS.map(()=>({h:null,lieu:'',auto:false})));
-  saveRoster();render();$('qWho').value=cols.length-1;loadQuick();$('qName').focus();$('qName').select();
-};
-$('qClear').onclick=()=>{
-  const ci=+$('qWho').value;if(!cols[ci])return;
-  grid[ci]=DAYS.map(()=>({h:null,lieu:'',auto:false}));delete cols[ci].manual;
-  reports=reports.filter(r=>r.col!==ci);render();loadQuick();
-};
 function saveRoster(){
   acted=true;
   ROSTER=cols.filter(c=>!c.spacer).map(c=>c.name);
@@ -625,7 +604,7 @@ $('chips').addEventListener('click',e=>{
   const b=e.target.closest('[data-rm]');if(!b)return;
   const ci=+b.dataset.rm;
   if(total(ci)>0&&pendingRm!==ci){pendingRm=ci;renderTeam();toast(cols[ci].name+' a '+fmt(total(ci))+' h cette semaine. Clique encore pour retirer.');return}
-  pendingRm=-1;
+  pendingRm=-1;openSet.clear();
   cols.splice(ci,1);grid.splice(ci,1);
   reports=reports.filter(r=>r.col!==ci);reports.forEach(r=>{if(r.col>ci)r.col--});
   saveRoster();render();
@@ -640,43 +619,165 @@ function addPerson(){
 $('tAdd').onclick=addPerson;
 $('tName').addEventListener('keydown',e=>{if(e.key==='Enter')addPerson()});
 function dayDate(d){const m=week&&week.monday?new Date(week.monday):thisMonday();m.setDate(m.getDate()+d);return ymd(m)}
-function fillBin(){
-  const s=$('binSrc'),cur=s.value;
-  s.innerHTML=cols.map((c,ci)=>c.spacer?'':`<option value="${ci}">${esc(c.name)}</option>`).join('');
-  if(cur&&cols[+cur]&&!cols[+cur].spacer)s.value=cur;
-  else{const f=cols.findIndex((c,ci)=>!c.spacer&&total(ci)>0);if(f>=0)s.value=f}
-  refreshBin();
+let curStep=1;const openSet=new Set();
+function defaultWeek(){const m=thisMonday();if((new Date().getDay()+6)%7<=2)m.setDate(m.getDate()-7);const iw=isoWeek(m);return {semaine:iw.w,annee:iw.y,monday:m,manual:true}}
+function goStep(n){
+  if(n===2&&sample){reset();sample=false;week=defaultWeek();extraMsgs=[]}
+  curStep=n;
+  render();
+  document.querySelectorAll('[data-step]').forEach(el=>{el.hidden=String(el.dataset.step)!==String(n)});
+  document.querySelectorAll('#steps [data-go]').forEach(b=>b.classList.toggle('on',+b.dataset.go===n));
+  window.scrollTo({top:0});
 }
-function refreshBin(){
-  const src=+$('binSrc').value;
-  $('binTargets').innerHTML=cols.map((c,ci)=>(c.spacer||ci===src)?'':`<label class="ck"><input type="checkbox" value="${ci}">${esc(c.name)}</label>`).join('');
-  $('binDays').innerHTML=DAYS.map((d,i)=>`<label class="ck"><input type="checkbox" value="${i}" ${grid[src]&&grid[src][i].h?'checked':''}>${d.slice(0,3)}</label>`).join('');
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)goStep(+b.dataset.go)});
+$('sampleStart').onclick=()=>goStep(2);
+function hasReal(ci){return reports.some(r=>r.col===ci&&!r.synthetic)}
+function blankDays(){return DAYS.map(()=>({h:null,lieu:'',auto:false}))}
+function ensureManual(c){if(!cols[c].manual)cols[c].manual={type:'Régie',aff:''};return cols[c].manual}
+function cardHtml(ci,withHours){
+  const c=cols[ci],name=esc(c.name),open=total(ci)>0||openSet.has(ci);
+  if(!open)return `<div class="pc closed" data-c="${ci}"><b>${name}</b><button class="ghost sm" data-act="open">Saisir les heures</button></div>`;
+  const lieu=(grid[ci].map(x=>x.lieu).find(Boolean))||'';
+  const mn=c.manual||{type:'Régie',aff:''};
+  const days=DAYS.map((d,i)=>`<label>${d.slice(0,3)}<input inputmode="decimal" data-f="d" data-d="${i}" aria-label="${name} ${d}" value="${grid[ci][i].h===null?'':fmt(grid[ci][i].h)}"></label>`).join('');
+  const same=withHours.filter(s=>s!==ci).map(s=>`<option value="${s}">${esc(cols[s].name)} (${fmt(total(s))} h)</option>`).join('');
+  return `<div class="pc" data-c="${ci}"><div class="pc-head"><b>${name}</b><span class="pc-tot" id="pt${ci}">${fmt(total(ci))} h</span></div>
+    <div class="pc-row">
+      <label>Lieu / chantier<input data-f="lieu" value="${esc(lieu)}" placeholder="ex. EURIAL" autocomplete="off"></label>
+      <label>N° devis ou régie<input data-f="num" list="numDL" value="${esc(mn.aff||'')}" placeholder="facultatif" autocomplete="off"></label>
+      <label>Type<select data-f="type"><option ${mn.type==='Régie'?'selected':''}>Régie</option><option ${mn.type==='Devis'?'selected':''}>Devis</option></select></label>
+    </div>
+    <div class="pc-days">${days}</div>
+    <div class="pc-act">
+      <button class="ghost sm" data-act="p39">39 h</button><button class="ghost sm" data-act="p40">40 h</button>
+      <label class="same">Comme (binôme)<select data-f="same"><option value="">— choisir une personne —</option>${same}</select></label>
+      <button class="ghost sm" data-act="clear">Vider</button>
+    </div></div>`;
 }
-$('binSrc').onchange=refreshBin;
-$('binApply').onclick=()=>{
-  if(sample){toast("Charge d'abord des rapports ou saisis des heures");return}
-  const src=+$('binSrc').value;
-  const tg=[...$('binTargets').querySelectorAll('input:checked')].map(i=>+i.value);
-  const dy=[...$('binDays').querySelectorAll('input:checked')].map(i=>+i.value);
-  if(!tg.length||!dy.length){toast('Choisis le bin\u00f4me et au moins un jour');return}
-  const ent=affData().filter(e=>e.ci===src&&dy.includes(e.d));
-  if(!ent.length){toast('Aucune heure \u00e0 copier ces jours-l\u00e0');return}
-  acted=true;
-  tg.forEach(t=>{
-    let rep=reports.find(r=>r.col===t);
-    if(!rep){rep={file:'Bin\u00f4me de '+cols[src].name,tech:cols[t].name,col:t,sum:0,notes:[],lines:[]};reports.push(rep)}
-    rep.lines=rep.lines.filter(l=>!l.date||!dy.includes(dayIdx(l.date)));
-    dy.forEach(d=>{
-      const es=ent.filter(e=>e.d===d);
-      grid[t][d]={h:es.length?es.reduce((a,e)=>a+e.h,0):null,lieu:es.length?grid[src][d].lieu:'',auto:true};
-    });
-    ent.forEach(e=>rep.lines.push({date:dayDate(e.d),client:e.client,type:e.type,numero:e.numero,travaux:e.trav,heures:String(e.h),donneurOrdre:'',statut:'Termin\u00e9',_tech:cols[t].name}));
-    rep.sum=rep.lines.reduce((a,l)=>a+num(l.heures),0);
-    rep.notes=rep.notes.filter(n=>!n.startsWith('Bin\u00f4me'));
-    rep.notes.push('Bin\u00f4me de '+cols[src].name+' : m\u00eames heures et m\u00eame lieu copi\u00e9s.');
+function renderComplete(){
+  renderGroup();
+  const showAll=$('showAll').checked;
+  const list=[];
+  cols.forEach((c,ci)=>{if(c.spacer)return;if(!showAll&&hasReal(ci))return;list.push(ci)});
+  const withHours=cols.map((c,ci)=>ci).filter(ci=>!cols[ci].spacer&&total(ci)>0);
+  const nr=reports.filter(r=>!r.synthetic).length;
+  $('cardsInfo').textContent=nr?`${nr} rapport(s) reçu(s). Complète ceux qui n'en ont pas envoyé : lieu, heures, ou « Comme » pour un binôme.`:"Aucun rapport chargé : saisis les heures de chaque personne qui a travaillé.";
+  $('cards').innerHTML=list.map(ci=>cardHtml(ci,withHours)).join('');
+}
+$('showAll').onchange=renderComplete;
+
+const grpSel=new Set();
+function renderGroup(){
+  $('grpWho').innerHTML=cols.map((c,ci)=>c.spacer?'':`<label class="gk"><input type="checkbox" data-gk="${ci}" ${grpSel.has(ci)?'checked':''}>${esc(c.name)}</label>`).join('');
+}
+$('grpWho').addEventListener('change',e=>{const k=e.target.dataset.gk;if(k===undefined)return;e.target.checked?grpSel.add(+k):grpSel.delete(+k)});
+function gSet(P){document.querySelectorAll('#gDays [data-g]').forEach((i,k)=>i.value=P[k]===null?'':String(P[k]).replace('.',','))}
+$('g39').onclick=()=>gSet([8.5,8.5,8.5,8.5,5,null,null]);
+$('g40').onclick=()=>gSet([10,10,10,10,null,null,null]);
+$('gApply').onclick=()=>{
+  const sel=[...grpSel].filter(c=>cols[c]&&!cols[c].spacer);
+  if(!sel.length){toast('Coche au moins une personne');return}
+  const H=[...document.querySelectorAll('#gDays [data-g]')].map(i=>i.value.trim()===''?null:num(i.value));
+  if(!H.some(Boolean)){toast('Saisis les heures');return}
+  const lieu=$('gLieu').value.trim(),n=$('gNum').value.trim(),ty=$('gType').value;
+  acted=true;rememberNum(n);
+  sel.forEach(c=>{
+    reports=reports.filter(r=>r.col!==c);
+    grid[c]=H.map(h=>({h,lieu:h?lieu:'',auto:false}));
+    const m=ensureManual(c);m.type=ty;m.aff=n;openSet.add(c);
   });
-  render();toast('Bin\u00f4me ajout\u00e9 : '+tg.map(t=>cols[t].name).join(', '));
+  const names=sel.map(c=>cols[c].name).join(', ');
+  grpSel.clear();render();toast('Appliqué : '+names);
 };
+function afterCardEdit(c){
+  const t=document.getElementById('pt'+c);if(t)t.textContent=fmt(total(c))+' h';
+  renderAff();renderPay();renderNums();renderSteps();saveWeek();
+}
+$('cards').addEventListener('input',e=>{
+  const t=e.target,card=t.closest('.pc');if(!card||!t.dataset.f||t.dataset.f==='same')return;
+  const c=+card.dataset.c,f=t.dataset.f;acted=true;
+  if(f==='d'){
+    const x=grid[c][+t.dataset.d],v=t.value.trim();
+    x.h=v===''?null:num(v);x.auto=false;
+    if(x.h&&!x.lieu)x.lieu=card.querySelector('[data-f="lieu"]').value.trim();
+    ensureManual(c);
+  }else if(f==='lieu'){grid[c].forEach(x=>{if(x.h)x.lieu=t.value.trim()});ensureManual(c)}
+  else if(f==='num'){ensureManual(c).aff=t.value.trim()}
+  else if(f==='type'){ensureManual(c).type=t.value}
+  afterCardEdit(c);
+});
+$('cards').addEventListener('change',e=>{
+  const t=e.target;if(t.dataset.f==='num')rememberNum(t.value);if(t.dataset.f!=='same'||!t.value)return;
+  copyFrom(+t.value,+t.closest('.pc').dataset.c);
+});
+$('cards').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const card=b.closest('.pc'),c=+card.dataset.c,a=b.dataset.act;
+  if(a==='open'){openSet.add(c);renderComplete();const i=document.querySelector(`.pc[data-c="${c}"] [data-f="lieu"]`);if(i)i.focus();return}
+  acted=true;
+  if(a==='clear'){grid[c]=blankDays();delete cols[c].manual;reports=reports.filter(r=>r.col!==c);openSet.delete(c);render();return}
+  const lieu=card.querySelector('[data-f="lieu"]').value.trim();
+  const P=a==='p39'?[8.5,8.5,8.5,8.5,5,null,null]:[10,10,10,10,null,null,null];
+  grid[c]=P.map(h=>({h,lieu:h?lieu:'',auto:false}));ensureManual(c);
+  renderComplete();afterCardEdit(c);
+});
+function copyFrom(src,t){
+  const dy=DAYS.map((_,d)=>d).filter(d=>grid[src][d].h);
+  const ent=affData().filter(e=>e.ci===src&&dy.includes(e.d));
+  if(!ent.length){toast('Rien à copier');renderComplete();return}
+  acted=true;
+  reports=reports.filter(r=>r.col!==t);
+  grid[t]=blankDays();
+  dy.forEach(d=>{const es=ent.filter(e=>e.d===d);grid[t][d]={h:es.reduce((a,e)=>a+e.h,0),lieu:grid[src][d].lieu,auto:true}});
+  const rep={file:'Binôme de '+cols[src].name,tech:cols[t].name,col:t,synthetic:true,sum:0,notes:['Binôme de '+cols[src].name+' : mêmes heures et même lieu copiés.'],lines:[]};
+  ent.forEach(e=>rep.lines.push({date:dayDate(e.d),client:e.client,type:e.type,numero:e.numero,travaux:e.trav,heures:String(e.h),donneurOrdre:'',statut:'Terminé',_tech:cols[t].name}));
+  rep.sum=rep.lines.reduce((a,l)=>a+num(l.heures),0);
+  reports.push(rep);
+  cols[t].manual={type:ent[0].type||'Régie',aff:ent[0].numero||'',travaux:ent[0].trav};
+  openSet.add(t);
+  render();toast(cols[t].name+' : mêmes heures que '+cols[src].name);
+}
+function renderNums(){
+  refreshDL();
+  const rows=affGroups().rows;
+  const todo=rows.filter(g=>!g.num);
+  const el=$('numList');
+  if(!rows.length)el.innerHTML='<p class="note">Aucune heure saisie pour l\'instant.</p>';
+  else if(!todo.length)el.innerHTML='<p class="okmsg">✓ Toutes les heures ont un numéro.</p>';
+  else el.innerHTML=todo.map(g=>{
+    const who=[...g.per.keys()].map(ci=>cols[ci].name).join(', ');
+    const lab=[...g.travs].join(' / ');
+    return `<div class="nc"><div class="nc-t">${esc(lab)}</div><div class="nc-m">${esc([...g.types].join(', '))} · ${fmt(g.tot)} h · ${esc(who)}</div><input data-un="${encodeURIComponent(g.ukey)}" list="numDL" placeholder="N° de devis ou de régie" aria-label="Numéro pour ${esc(lab)}" autocomplete="off" inputmode="text"><div class="sug">${recentNums().slice(0,8).map(n=>`<button type="button" class="ghost sm" data-pickn="${esc(n)}">${esc(n)}</button>`).join('')}</div></div>`}).join('');
+  const done=rows.filter(g=>g.num&&g.fromAssign);
+  $('numDone').innerHTML=done.map(g=>`<span class="chip">${esc(g.num)} — ${esc([...g.travs].join(' / '))}<button data-unrm="${encodeURIComponent(g.ukey)}" aria-label="Retirer le numéro ${esc(g.num)}" title="Retirer ce numéro">×</button></span>`).join('');
+}
+function recentNums(){let a=[];try{a=JSON.parse(localStorage.getItem('slvs-nums')||'[]')}catch(_){}
+  Object.values(assign).forEach(v=>{if(v&&!a.includes(v))a.push(v)});return a}
+function rememberNum(v){v=(v||'').trim();if(!v)return;let a=[];try{a=JSON.parse(localStorage.getItem('slvs-nums')||'[]')}catch(_){}
+  a=[v,...a.filter(x=>x!==v)].slice(0,40);try{localStorage.setItem('slvs-nums',JSON.stringify(a))}catch(_){}refreshDL()}
+function refreshDL(){let d=document.getElementById('numDL');if(!d){d=document.createElement('datalist');d.id='numDL';document.body.appendChild(d)}
+  d.innerHTML=recentNums().map(n=>`<option value="${esc(n)}">`).join('')}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-pickn]');if(!b)return;
+  const i=b.closest('.nc').querySelector('[data-un]');i.value=b.dataset.pickn;i.dispatchEvent(new Event('change',{bubbles:true}))});
+function saveAssign(){try{localStorage.setItem('slvs-assign',JSON.stringify(assign))}catch(_){}}
+$('numList').addEventListener('change',e=>{
+  const t=e.target.closest('[data-un]');if(!t)return;
+  const k=decodeURIComponent(t.dataset.un),v=t.value.trim();
+  if(v){assign[k]=v;saveAssign();rememberNum(v)}
+  renderAff();renderNums();renderChecks();renderSteps();
+  const n=$('numList').querySelector('[data-un]');if(n)n.focus();
+});
+$('numDone').addEventListener('click',e=>{
+  const b=e.target.closest('[data-unrm]');if(!b)return;
+  delete assign[decodeURIComponent(b.dataset.unrm)];saveAssign();
+  renderAff();renderNums();renderChecks();renderSteps();
+});
+function renderSteps(){
+  const nr=reports.filter(r=>!r.synthetic).length;
+  $('b1').textContent=nr?String(nr):'';
+  const un=affGroups().rows.filter(g=>!g.num).length;
+  const b3=$('b3');b3.textContent=un?String(un):(affGroups().rows.length?'✓':'');b3.classList.toggle('warn',un>0);
+}
 function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
 function thisMonday(){const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));return d}
 function isoWeek(dt){const d=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));const day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);const y=d.getUTCFullYear();return {w:Math.ceil(((d-Date.UTC(y,0,1))/864e5+1)/7),y}}
@@ -710,6 +811,28 @@ $('payCopy').onclick=()=>{
   rows.forEach(r=>L.push([r.name,...r.days.map(h=>h?fmt(h):''),fmt(r.tot),r.lieux].join('\t')));
   copyText(L.join('\n'),'Résumé copié');
 };
+
+function mailText(){
+  const wk=week?`Semaine ${week.semaine} ${week.annee}`:'Pointage';
+  const L=[`Pointage SLVS — ${wk}`,''];
+  payRows().forEach(r=>L.push(`${r.name} : ${DAYS.map((d,i)=>r.days[i]?d.slice(0,3)+' '+fmt(r.days[i]):'').filter(Boolean).join(', ')} — total ${fmt(r.tot)} h${r.lieux?' ('+r.lieux+')':''}`));
+  const g=affGroups().rows;
+  if(g.length){L.push('','Heures par n° de devis / régie :');g.forEach(x=>L.push(`${x.num||'(sans n°) '+[...x.travs].join(' / ')} : ${fmt(x.tot)} h`))}
+  return {subject:`Pointage SLVS ${wk}`,body:L.join('\n')};
+}
+$('mailBtn').onclick=async()=>{
+  const m=mailText();
+  if(window.XLSX){
+    try{
+      const wb=buildWb();const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+      const name=week?`POINTAGE_S${week.semaine}_${week.annee}.xlsx`:'POINTAGE.xlsx';
+      const file=new File([buf],name,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:m.subject,text:m.body});return}
+      xlsxDownload();toast('Excel téléchargé : joins-le au mail');
+    }catch(e){if(e&&e.name==='AbortError')return}
+  }
+  location.href='mailto:?subject='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);
+};
 function copyText(text,ok){
   const fail=()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();
     let r=false;try{r=document.execCommand('copy')}catch(_){}ta.remove();toast(r?ok:'Copie impossible ici.')};
@@ -739,11 +862,10 @@ $('weeksSel').onchange=e=>{
     cols=d.cols;grid=d.grid;reports=d.reports;
     const m=d.week.monday?d.week.monday.split('-').map(Number):null;
     week={semaine:d.week.semaine,annee:d.week.annee,monday:m?new Date(m[0],m[1]-1,m[2]):null};
-    sample=false;extraMsgs=[];pendingRm=-1;render();loadQuick();
+    sample=false;extraMsgs=[];pendingRm=-1;goStep(4);
   }catch(err){toast('Semaine illisible')}
 };
-function xlsxDownload(){
-  if(!window.XLSX){toast('Export Excel indisponible hors connexion');return}
+function buildWb(){
   const names=cols.map(c=>c.name);
   const A=[['slvs',week?`SEMAINE ${week.semaine} ${week.annee}`:'']];
   A.push(['NOM',...names]);
@@ -756,13 +878,17 @@ function xlsxDownload(){
   ws['!cols']=[{wch:10},...cols.map(()=>({wch:12}))];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,week?('S'+week.semaine):'Pointage');
-  XLSX.writeFile(wb,week?`POINTAGE_S${week.semaine}_${week.annee}.xlsx`:'POINTAGE.xlsx');
+  return wb;
+}
+function xlsxDownload(){
+  if(!window.XLSX){toast('Export Excel indisponible hors connexion');return}
+  XLSX.writeFile(buildWb(),week?`POINTAGE_S${week.semaine}_${week.annee}.xlsx`:'POINTAGE.xlsx');
 }
 $('xlsxBtn').onclick=xlsxDownload;
 $('printBtn').onclick=()=>window.print();
 $('payPrint').onclick=()=>window.print();
 refreshWeeks();
-reset();sample=true;loadReport(SAMPLE,'S45-2026-cedric-toutain.json');render();loadQuick();
+reset();sample=true;loadReport(SAMPLE,'S45-2026-cedric-toutain.json');goStep(1);
 (async()=>{
   let names=null;
   try{const raw=localStorage.getItem('slvs-roster');if(raw)names=JSON.parse(raw)}catch(e){}
@@ -774,7 +900,7 @@ reset();sample=true;loadReport(SAMPLE,'S45-2026-cedric-toutain.json');render();l
     }
   }catch(e){dbRef=null}
   if(Array.isArray(names)&&names.length&&!acted&&JSON.stringify(names)!==JSON.stringify(ROSTER)){
-    ROSTER=names;reset();sample=true;loadReport(SAMPLE,'S45-2026-cedric-toutain.json');render();loadQuick();
+    ROSTER=names;reset();sample=true;loadReport(SAMPLE,'S45-2026-cedric-toutain.json');goStep(curStep);
   }
 })();
 </script>

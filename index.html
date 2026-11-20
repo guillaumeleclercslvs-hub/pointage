@@ -254,7 +254,7 @@ body{margin:0}
         <label>Type<select id="gType"><option>Régie</option><option>Devis</option></select></label>
       </div>
       <div class="pc-days" id="gDays"><label>Lun<input inputmode="decimal" aria-label="Lundi" data-g="0"></label><label>Mar<input inputmode="decimal" aria-label="Mardi" data-g="1"></label><label>Mer<input inputmode="decimal" aria-label="Mercredi" data-g="2"></label><label>Jeu<input inputmode="decimal" aria-label="Jeudi" data-g="3"></label><label>Ven<input inputmode="decimal" aria-label="Vendredi" data-g="4"></label><label>Sam<input inputmode="decimal" aria-label="Samedi" data-g="5"></label><label>Dim<input inputmode="decimal" aria-label="Dimanche" data-g="6"></label></div>
-      <div class="pc-act"><button class="ghost sm" id="g39">39 h</button><button class="ghost sm" id="g40">40 h</button><button id="gApply">Appliquer à la sélection</button></div>
+      <div class="pc-act"><button class="ghost sm" id="g39">10/10/10/9</button><button class="ghost sm" id="g40">8/8/8/8/7</button><button id="gApply">Appliquer à la sélection</button></div>
     </div>
     
     <div id="cards"></div>
@@ -649,7 +649,7 @@ function cardHtml(ci,withHours){
     </div>
     <div class="pc-days">${days}</div>
     <div class="pc-act">
-      <button class="ghost sm" data-act="p39">39 h</button><button class="ghost sm" data-act="p40">40 h</button>
+      <button class="ghost sm" data-act="p39">10/10/10/9</button><button class="ghost sm" data-act="p40">8/8/8/8/7</button>
       <label class="same">Comme (binôme)<select data-f="same"><option value="">— choisir une personne —</option>${same}</select></label>
       <button class="ghost sm" data-act="clear">Vider</button>
     </div></div>`;
@@ -672,8 +672,8 @@ function renderGroup(){
 }
 $('grpWho').addEventListener('change',e=>{const k=e.target.dataset.gk;if(k===undefined)return;e.target.checked?grpSel.add(+k):grpSel.delete(+k)});
 function gSet(P){document.querySelectorAll('#gDays [data-g]').forEach((i,k)=>i.value=P[k]===null?'':String(P[k]).replace('.',','))}
-$('g39').onclick=()=>gSet([8.5,8.5,8.5,8.5,5,null,null]);
-$('g40').onclick=()=>gSet([10,10,10,10,null,null,null]);
+$('g39').onclick=()=>gSet([10,10,10,9,null,null,null]);
+$('g40').onclick=()=>gSet([8,8,8,8,7,null,null]);
 $('gApply').onclick=()=>{
   const sel=[...grpSel].filter(c=>cols[c]&&!cols[c].spacer);
   if(!sel.length){toast('Coche au moins une personne');return}
@@ -717,7 +717,7 @@ $('cards').addEventListener('click',e=>{
   acted=true;
   if(a==='clear'){grid[c]=blankDays();delete cols[c].manual;reports=reports.filter(r=>r.col!==c);openSet.delete(c);render();return}
   const lieu=card.querySelector('[data-f="lieu"]').value.trim();
-  const P=a==='p39'?[8.5,8.5,8.5,8.5,5,null,null]:[10,10,10,10,null,null,null];
+  const P=a==='p39'?[10,10,10,9,null,null,null]:[8,8,8,8,7,null,null];
   grid[c]=P.map(h=>({h,lieu:h?lieu:'',auto:false}));ensureManual(c);
   renderComplete();afterCardEdit(c);
 });

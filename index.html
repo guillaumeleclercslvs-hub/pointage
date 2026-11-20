@@ -190,6 +190,10 @@ table.xl thead th{display:none}
 .chips label.gk{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:99px;background:var(--panel);font-size:.9rem;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink)}
 .chips label.gk input{width:auto;padding:0}
 .pc .chips label.gk{flex-direction:row;font-size:.9rem}
+.xrows{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.xr{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px;width:100%}
+.xnote{font-size:.8rem;color:var(--muted)}
+.xnote:empty{display:none}
 .pc-act .same{flex:1 1 11rem}
 #numList{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr))}
 .nc{border:1px solid var(--warn);background:var(--warn-soft);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -253,6 +257,7 @@ body{margin:0}
         <label>N° devis ou régie<input id="gNum" list="numDL" placeholder="facultatif" autocomplete="off"></label>
         <label>Type<select id="gType"><option>Régie</option><option>Devis</option></select></label>
       </div>
+      <div id="gX"></div>
       <div class="pc-days" id="gDays"><label>Lun<input inputmode="decimal" aria-label="Lundi" data-g="0"></label><label>Mar<input inputmode="decimal" aria-label="Mardi" data-g="1"></label><label>Mer<input inputmode="decimal" aria-label="Mercredi" data-g="2"></label><label>Jeu<input inputmode="decimal" aria-label="Jeudi" data-g="3"></label><label>Ven<input inputmode="decimal" aria-label="Vendredi" data-g="4"></label><label>Sam<input inputmode="decimal" aria-label="Samedi" data-g="5"></label><label>Dim<input inputmode="decimal" aria-label="Dimanche" data-g="6"></label></div>
       <div class="pc-act"><button class="ghost sm" id="g39">10/10/10/9</button><button class="ghost sm" id="g40">8/8/8/8/7</button><button id="gApply">Appliquer à la sélection</button></div>
     </div>
@@ -509,10 +514,21 @@ function affData(){
     if(rep&&grid[ci].every(x=>x.h===null||x.auto)){
       rep.lines.forEach(l=>{const h=num(l.heures);if(!h)return;ent.push({ci,d:l.date?dayIdx(l.date):-1,client:(l.client||'').trim(),type:l.type||'',numero:(l.numero||'').trim(),trav:(l.travaux||'').trim(),h})});
     }else{
+      const mine=[];
       grid[ci].forEach((x,d)=>{
         if(!x.h)return;
-        ent.push({ci,d,client:x.lieu||'',type:(c.manual&&c.manual.type)||'R\u00e9gie',numero:(c.manual&&c.manual.aff)||'',trav:(c.manual&&c.manual.travaux)||x.lieu||'Saisie manuelle',h:x.h});
+        mine.push({ci,d,client:x.lieu||'',type:(c.manual&&c.manual.type)||'R\u00e9gie',numero:(c.manual&&c.manual.aff)||'',trav:(c.manual&&c.manual.travaux)||x.lieu||'Saisie manuelle',h:x.h});
       });
+      const extra=(c.manual&&c.manual.extra)||[],more=[];
+      extra.forEach(xt=>{
+        let need=num(xt.h)||0;
+        for(let k=mine.length-1;k>=0&&need>0;k--){
+          const take=Math.min(need,mine[k].h);if(take<=0)continue;
+          mine[k].h-=take;need-=take;
+          more.push(Object.assign({},mine[k],{numero:(xt.num||'').trim(),type:xt.type||mine[k].type,h:take}));
+        }
+      });
+      mine.concat(more).filter(e=>e.h>0).forEach(e=>ent.push(e));
     }
   });
   return ent;
@@ -634,6 +650,19 @@ $('sampleStart').onclick=()=>goStep(2);
 function hasReal(ci){return reports.some(r=>r.col===ci&&!r.synthetic)}
 function blankDays(){return DAYS.map(()=>({h:null,lieu:'',auto:false}))}
 function ensureManual(c){if(!cols[c].manual)cols[c].manual={type:'Régie',aff:''};return cols[c].manual}
+function xrows(ex,id){
+  ex=ex||[];
+  const rows=ex.map((x,i)=>`<div class="xr" data-i="${i}"><input data-f="xnum" list="numDL" value="${esc(x.num||'')}" placeholder="N° devis ou régie" aria-label="N° supplémentaire" autocomplete="off"><select data-f="xtype" aria-label="Type"><option ${x.type==='Devis'?'':'selected'}>Régie</option><option ${x.type==='Devis'?'selected':''}>Devis</option></select><input data-f="xh" inputmode="decimal" value="${x.h==null?'':esc(String(x.h).replace('.',','))}" placeholder="heures" aria-label="Heures sur ce numéro"><button class="ghost sm" data-act="xdel" aria-label="Retirer ce numéro">×</button></div>`).join('');
+  return `<div class="xrows" data-x="${id}">${rows}<div class="xnote" id="xn${id}"></div><button class="ghost sm" data-act="xadd" type="button">+ Ajouter un numéro</button></div>`;
+}
+function xNote(c){
+  const el=document.getElementById('xnc'+c);if(!el)return;
+  const ex=(cols[c].manual&&cols[c].manual.extra)||[];
+  if(!ex.length){el.textContent='';return}
+  const left=total(c)-ex.reduce((a,x)=>a+(num(x.h)||0),0);
+  el.textContent=left<0?`Attention : ${fmt(-left)} h de trop`:`${fmt(left)} h restent sur le n° principal`;
+  el.style.color=left<0?'var(--warn)':'var(--muted)';
+}
 function cardHtml(ci,withHours){
   const c=cols[ci],name=esc(c.name),open=total(ci)>0||openSet.has(ci);
   if(!open)return `<div class="pc closed" data-c="${ci}"><b>${name}</b><button class="ghost sm" data-act="open">Saisir les heures</button></div>`;
@@ -647,6 +676,7 @@ function cardHtml(ci,withHours){
       <label>N° devis ou régie<input data-f="num" list="numDL" value="${esc(mn.aff||'')}" placeholder="facultatif" autocomplete="off"></label>
       <label>Type<select data-f="type"><option ${mn.type==='Régie'?'selected':''}>Régie</option><option ${mn.type==='Devis'?'selected':''}>Devis</option></select></label>
     </div>
+    ${xrows(mn.extra,'c'+ci)}
     <div class="pc-days">${days}</div>
     <div class="pc-act">
       <button class="ghost sm" data-act="p39">10/10/10/9</button><button class="ghost sm" data-act="p40">8/8/8/8/7</button>
@@ -666,8 +696,15 @@ function renderComplete(){
 }
 $('showAll').onchange=renderComplete;
 
-const grpSel=new Set();
+const grpSel=new Set();let gExtra=[];
+function renderGx(){$('gX').innerHTML=xrows(gExtra,'g')}
+$('gX').addEventListener('input',e=>{const t=e.target,r=t.closest('.xr');if(!r)return;const x=gExtra[+r.dataset.i],f=t.dataset.f;if(!x)return;
+  if(f==='xnum')x.num=t.value.trim();else if(f==='xtype')x.type=t.value;else if(f==='xh')x.h=t.value.trim()===''?null:num(t.value)});
+$('gX').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;
+  if(b.dataset.act==='xadd')gExtra.push({num:'',type:'R\u00e9gie',h:null});else gExtra.splice(+b.closest('.xr').dataset.i,1);renderGx()});
+
 function renderGroup(){
+  if(!$('gX').innerHTML)renderGx();
   $('grpWho').innerHTML=cols.map((c,ci)=>c.spacer?'':`<label class="gk"><input type="checkbox" data-gk="${ci}" ${grpSel.has(ci)?'checked':''}>${esc(c.name)}</label>`).join('');
 }
 $('grpWho').addEventListener('change',e=>{const k=e.target.dataset.gk;if(k===undefined)return;e.target.checked?grpSel.add(+k):grpSel.delete(+k)});
@@ -684,13 +721,13 @@ $('gApply').onclick=()=>{
   sel.forEach(c=>{
     reports=reports.filter(r=>r.col!==c);
     grid[c]=H.map(h=>({h,lieu:h?lieu:'',auto:false}));
-    const m=ensureManual(c);m.type=ty;m.aff=n;openSet.add(c);
+    const m=ensureManual(c);m.type=ty;m.aff=n;m.extra=gExtra.filter(x=>x.num||x.h).map(x=>({num:x.num,type:x.type,h:x.h}));openSet.add(c);
   });
   const names=sel.map(c=>cols[c].name).join(', ');
-  grpSel.clear();render();toast('Appliqué : '+names);
+  grpSel.clear();gExtra=[];renderGx();render();toast('Appliqué : '+names);
 };
 function afterCardEdit(c){
-  const t=document.getElementById('pt'+c);if(t)t.textContent=fmt(total(c))+' h';
+  const t=document.getElementById('pt'+c);if(t)t.textContent=fmt(total(c))+' h';xNote(c);
   renderAff();renderPay();renderNums();renderSteps();saveWeek();
 }
 $('cards').addEventListener('input',e=>{
@@ -702,18 +739,28 @@ $('cards').addEventListener('input',e=>{
     if(x.h&&!x.lieu)x.lieu=card.querySelector('[data-f="lieu"]').value.trim();
     ensureManual(c);
   }else if(f==='lieu'){grid[c].forEach(x=>{if(x.h)x.lieu=t.value.trim()});ensureManual(c)}
+  else if(f==='xnum'||f==='xtype'||f==='xh'){
+    const m=ensureManual(c);m.extra=m.extra||[];const x=m.extra[+t.closest('.xr').dataset.i];
+    if(x){if(f==='xnum')x.num=t.value.trim();else if(f==='xtype')x.type=t.value;else x.h=t.value.trim()===''?null:num(t.value)}
+  }
   else if(f==='num'){ensureManual(c).aff=t.value.trim()}
   else if(f==='type'){ensureManual(c).type=t.value}
   afterCardEdit(c);
 });
 $('cards').addEventListener('change',e=>{
-  const t=e.target;if(t.dataset.f==='num')rememberNum(t.value);if(t.dataset.f!=='same'||!t.value)return;
+  const t=e.target;if(t.dataset.f==='num'||t.dataset.f==='xnum')rememberNum(t.value);if(t.dataset.f!=='same'||!t.value)return;
   copyFrom(+t.value,+t.closest('.pc').dataset.c);
 });
 $('cards').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const card=b.closest('.pc'),c=+card.dataset.c,a=b.dataset.act;
   if(a==='open'){openSet.add(c);renderComplete();const i=document.querySelector(`.pc[data-c="${c}"] [data-f="lieu"]`);if(i)i.focus();return}
+  if(a==='xadd'||a==='xdel'){
+    const m=ensureManual(c);m.extra=m.extra||[];acted=true;
+    if(a==='xadd')m.extra.push({num:'',type:m.type||'R\u00e9gie',h:null});else m.extra.splice(+b.closest('.xr').dataset.i,1);
+    openSet.add(c);renderComplete();afterCardEdit(c);
+    if(a==='xadd'){const i=document.querySelector(`.pc[data-c="${c}"] .xr:last-of-type [data-f="xnum"]`);if(i)i.focus()}
+    return}
   acted=true;
   if(a==='clear'){grid[c]=blankDays();delete cols[c].manual;reports=reports.filter(r=>r.col!==c);openSet.delete(c);render();return}
   const lieu=card.querySelector('[data-f="lieu"]').value.trim();

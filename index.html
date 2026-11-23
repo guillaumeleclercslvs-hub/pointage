@@ -207,6 +207,10 @@ table.xl thead th{display:none}
 .nc input{font:inherit;font-size:1.05rem;padding:10px;border:1px solid var(--warn);border-radius:4px;background:var(--panel);color:var(--ink);width:100%;min-width:0}
 .okmsg{color:var(--ok);font-weight:600;margin:0}
 .nav{margin-top:4px}
+.absrow{display:flex;flex-direction:column;gap:6px}
+.abstitle{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.absrow select{padding:9px 2px;font-size:.9rem}
+#pay td.abscell{font-weight:700;color:var(--accent)}
 .alloc{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px}
 .alloc h3{margin:0;font-size:1.05rem}
 .axr{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px}
@@ -598,7 +602,7 @@ function tsv(){
   const L=[];
   L.push(['NOM',...cols.map(c=>c.spacer?'':c.name)].join('\t'));
   DAYS.forEach((d,di)=>{
-    L.push([d,...cols.map((c,ci)=>c.spacer||grid[ci][di].h===null?'':fmt(grid[ci][di].h))].join('\t'));
+    L.push([d,...cols.map((c,ci)=>c.spacer?'':(grid[ci][di].h===null?(absOf(ci)[di]||''):fmt(grid[ci][di].h)))].join('\t'));
     L.push(['lieu',...cols.map((c,ci)=>c.spacer?'':grid[ci][di].lieu)].join('\t'));
   });
   return L.join('\n');
@@ -714,12 +718,13 @@ function applyLines(ci,lines){
   m.type=fl.type;m.aff=fl.num;m.lines=lines.map(L=>({lieu:L.lieu,num:L.num,type:L.type,hd:L.hd.slice()}));
 }
 function cardHtml(ci,withHours){
-  const c=cols[ci],name=esc(c.name),open=total(ci)>0||openSet.has(ci);
-  if(!open)return `<div class="pc closed" data-c="${ci}"><b>${name}</b><button class="ghost sm" data-act="open">Saisir les heures</button></div>`;
+  const c=cols[ci],name=esc(c.name),open=total(ci)>0||openSet.has(ci)||hasAbs(ci);
+  if(!open)return `<div class="pc closed" data-c="${ci}"><b>${name}</b><button class="ghost sm" data-act="open">Saisir heures / absence</button></div>`;
   const L=cardLines(ci);
   const same=withHours.filter(s=>s!==ci).map(s=>`<option value="${s}">${esc(cols[s].name)} (${fmt(total(s))} h)</option>`).join('');
   return `<div class="pc" data-c="${ci}"><div class="pc-head"><b>${name}</b><span class="pc-tot" id="pt${ci}">${fmt(total(ci))} h</span></div>
     ${L.map((l,i)=>lineHtml(l,i,L.length)).join('')}
+    <div class="absrow"><div class="abstitle">Absence (CP, RTT, maladie, absent)</div><div class="pc-days">${absSelects(absOf(ci),'data-abs')}</div></div>
     <div class="pc-act">
       <button class="ghost sm" data-act="add" type="button">+ Ajouter un chantier</button>
       <label class="same">Comme (binôme)<select data-f="same"><option value="">— choisir une personne —</option>${same}</select></label>
@@ -740,7 +745,8 @@ $('showAll').onchange=renderComplete;
 
 const grpSel=new Set();
 const blankLine=()=>({lieu:'',num:'',type:'Régie',hd:[null,null,null,null,null,null,null]});
-let gMain=blankLine();
+const newG=()=>Object.assign(blankLine(),{abs:['','','','','','','']});
+let gMain=newG();
 const rSel=new Set();let rX=[{lieu:'',num:'',type:'Régie',h:null}];
 const PRE={a:[10,10,10,9,null,null,null],b:[8,8,8,8,7,null,null],c:[7.5,7.5,7.5,7.5,5,null,null]};
 const PREL={a:'10/10/10/9',b:'8/8/8/8/7',c:'7,5/7,5/7,5/7,5/5'};
@@ -766,6 +772,7 @@ function renderGMain(){
     </div>
     <div class="pc-days">${DAYS.map((d,k)=>`<label>${d.slice(0,3)}<input inputmode="decimal" data-gd="${k}" aria-label="${d}" value="${gFmt(L.hd[k])}"></label>`).join('')}</div>
     <div class="pc-act">${Object.keys(PRE).map(k=>`<button class="ghost sm" type="button" data-gp="${k}">${PREL[k]}</button>`).join('')}</div>
+    <div class="absrow"><div class="abstitle">Absence (CP, RTT, maladie, absent)</div><div class="pc-days">${absSelects(L.abs,'data-gabs')}</div></div>
   </div>`;
   gTot();
 }
@@ -776,17 +783,18 @@ $('gMain').addEventListener('input',e=>{
   if(t.dataset.gf==='lieu')L.lieu=t.value.trim();else if(t.dataset.gf==='num')L.num=t.value.trim();else if(t.dataset.gf==='type')L.type=t.value;
   else if(t.dataset.gd!==undefined){L.hd[+t.dataset.gd]=t.value.trim()===''?null:num(t.value);gTot()}
 });
-$('gMain').addEventListener('change',e=>{if(e.target.dataset.gf==='num')rememberNum(e.target.value)});
+$('gMain').addEventListener('change',e=>{if(e.target.dataset.gf==='num')rememberNum(e.target.value);if(e.target.dataset.gabs!==undefined)gMain.abs[+e.target.dataset.gabs]=e.target.value});
 $('gMain').addEventListener('click',e=>{const b=e.target.closest('[data-gp]');if(!b)return;gMain.hd=PRE[b.dataset.gp].slice();renderGMain()});
 $('gApply').onclick=()=>{
   const sel=[...grpSel].filter(c=>cols[c]&&!cols[c].spacer);
   if(!sel.length){toast('Coche au moins une personne');return}
-  if(!gMain.hd.some(h=>num(h)>0)){toast('Saisis les heures de la semaine');return}
+  const hasH=gMain.hd.some(h=>num(h)>0),hasA=gMain.abs.some(Boolean);
+  if(!hasH&&!hasA){toast('Saisis les heures ou une absence');return}
   const L={lieu:gMain.lieu,num:gMain.num,type:gMain.type,hd:gMain.hd.slice()};
   if(L.num)rememberNum(L.num);
-  sel.forEach(c=>{applyLines(c,[JSON.parse(JSON.stringify(L))]);openSet.add(c)});
+  sel.forEach(c=>{if(hasH)applyLines(c,[JSON.parse(JSON.stringify(L))]);if(hasA)cols[c].abs=gMain.abs.slice();openSet.add(c)});
   const names=sel.map(c=>cols[c].name).join(', ');
-  grpSel.clear();gMain=blankLine();render();toast('Pointage appliqué : '+names);
+  grpSel.clear();gMain=newG();render();toast('Pointage appliqué : '+names);
 };
 /* ---- 2. répartition de l'équipe ---- */
 function renderRX(){
@@ -847,14 +855,15 @@ $('cards').addEventListener('input',e=>{
   applyLines(c,cardLines(c));afterCardEdit(c);
 });
 $('cards').addEventListener('change',e=>{
-  const t=e.target;if(t.dataset.gf==='num')rememberNum(t.value);
+  const t=e.target;
+  if(t.dataset.abs!==undefined){const c=+t.closest('.pc').dataset.c;cols[c].abs=absOf(c);cols[c].abs[+t.dataset.abs]=t.value;acted=true;afterCardEdit(c);return}if(t.dataset.gf==='num')rememberNum(t.value);
   if(t.dataset.f==='same'&&t.value)copyFrom(+t.value,+t.closest('.pc').dataset.c);
 });
 $('cards').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   const card=b.closest('.pc'),c=+card.dataset.c;
   if(b.dataset.act==='open'){openSet.add(c);renderComplete();const i=document.querySelector(`.pc[data-c="${c}"] [data-gf="lieu"]`);if(i)i.focus();return}
-  if(b.dataset.act==='clear'){grid[c]=blankDays();delete cols[c].manual;delete alloc[c];reports=reports.filter(r=>r.col!==c);openSet.delete(c);acted=true;render();return}
+  if(b.dataset.act==='clear'){grid[c]=blankDays();delete cols[c].manual;delete cols[c].abs;delete alloc[c];reports=reports.filter(r=>r.col!==c);openSet.delete(c);acted=true;render();return}
   const L=cardLines(c);
   if(b.dataset.act==='add'){L.push(blankLine());renderComplete();const g=document.querySelectorAll(`.pc[data-c="${c}"] .gl`);const i=g[g.length-1].querySelector('[data-gf=lieu]');if(i)i.focus();return}
   const gl=b.closest('.gl');if(!gl)return;const i=+gl.dataset.i;
@@ -921,9 +930,15 @@ $('wkMonday').onchange=e=>{
   const dt=new Date(y,m-1,d);dt.setDate(dt.getDate()-((dt.getDay()+6)%7));
   const iw=isoWeek(dt);week={semaine:iw.w,annee:iw.y,monday:dt,manual:true};render();
 };
+const ABSO=[['','\u2014'],['CP','CP'],['RTT','RTT'],['MAL','Mal.'],['ABS','Abs.']];
+const ABSN={CP:'CP',RTT:'RTT',MAL:'Maladie',ABS:'Absent'};
+function absOf(ci){const a=(cols[ci]&&cols[ci].abs)||[];return DAYS.map((_,d)=>a[d]||'')}
+function hasAbs(ci){return absOf(ci).some(Boolean)}
+function absTxt(a){const n={};a.forEach(x=>{if(x)n[x]=(n[x]||0)+1});return Object.keys(n).map(k=>`${ABSN[k]||k} ${n[k]} j`).join(' \u00b7 ')}
+function absSelects(a,attr){return DAYS.map((d,i)=>`<label>${d.slice(0,3)}<select ${attr}="${i}" aria-label="Absence ${d}" title="Absence ${d}">${ABSO.map(o=>`<option value="${o[0]}" ${(a[i]||'')===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></label>`).join('')}
 function payRows(){
-  return cols.map((c,ci)=>({c,ci})).filter(x=>!x.c.spacer&&total(x.ci)>0).map(({c,ci})=>({
-    name:c.name,days:grid[ci].map(x=>x.h||0),tot:total(ci),
+  return cols.map((c,ci)=>({c,ci})).filter(x=>!x.c.spacer&&(total(x.ci)>0||hasAbs(x.ci))).map(({c,ci})=>({
+    name:c.name,days:grid[ci].map(x=>x.h||0),abs:absOf(ci),absTxt:absTxt(absOf(ci)),tot:total(ci),
     lieux:[...new Set(grid[ci].flatMap(x=>x.lieu.split(' / ').map(s=>s.trim()).filter(Boolean)))].join(', ')}));
 }
 function renderPay(){
@@ -935,22 +950,22 @@ function renderPay(){
   if(!rows.length){$('payTable').innerHTML='<tbody><tr><td class="l">Aucune heure saisie.</td></tr></tbody>';return}
   const ds=DAYS.map((_,d)=>rows.reduce((a,r)=>a+r.days[d],0));
   const gt=rows.reduce((a,r)=>a+r.tot,0);
-  const cell=(h,we)=>`<td class="mono ${we?'we':''} ${h?'':'zero'}">${h?fmt(h):'\u00b7'}</td>`;
+  const cell=(h,we,code)=>`<td class="mono ${we?'we':''} ${h||code?'':'zero'} ${code?'abscell':''}">${h?fmt(h)+(code?' +'+code:''):(code||'\u00b7')}</td>`;
   $('payTable').innerHTML='<thead><tr><th class="l">Nom</th>'+DAYS.map((d,i)=>`<th class="${i>4?'we':''}">${d.slice(0,3)}</th>`).join('')+`<th>Total</th><th class="l">Lieux</th></tr></thead><tbody>`+
-   rows.map(r=>`<tr><td class="l nm">${esc(r.name)}</td>`+r.days.map((h,i)=>cell(h,i>4)).join('')+`<td class="mono tot">${fmt(r.tot)}</td><td class="lx">${esc(r.lieux)}</td></tr>`).join('')+
+   rows.map(r=>`<tr><td class="l nm">${esc(r.name)}</td>`+r.days.map((h,i)=>cell(h,i>4,r.abs[i])).join('')+`<td class="mono tot">${fmt(r.tot)}</td><td class="lx">${esc(r.lieux)}${r.absTxt?'<br><b>'+esc(r.absTxt)+'</b>':''}</td></tr>`).join('')+
    `</tbody><tfoot><tr><th>Total</th>`+ds.map(h=>`<td class="mono">${h?fmt(h):''}</td>`).join('')+`<td class="mono">${fmt(gt)}</td><td></td></tr></tfoot>`;
 }
 $('payCopy').onclick=()=>{
   const rows=payRows();
   const L=[['Nom',...DAYS.map(d=>d.slice(0,3)),'Total','Lieux'].join('\t')];
-  rows.forEach(r=>L.push([r.name,...r.days.map(h=>h?fmt(h):''),fmt(r.tot),r.lieux].join('\t')));
+  rows.forEach(r=>L.push([r.name,...r.days.map((h,i)=>h?fmt(h)+(r.abs[i]?' +'+r.abs[i]:''):(r.abs[i]||'')),fmt(r.tot),[r.lieux,r.absTxt].filter(Boolean).join(' — ')].join('\t')));
   copyText(L.join('\n'),'Résumé copié');
 };
 
 function mailText(){
   const wk=week?`Semaine ${week.semaine} ${week.annee}`:'Pointage';
   const L=[`Pointage SLVS — ${wk}`,''];
-  payRows().forEach(r=>L.push(`${r.name} : ${DAYS.map((d,i)=>r.days[i]?d.slice(0,3)+' '+fmt(r.days[i]):'').filter(Boolean).join(', ')} — total ${fmt(r.tot)} h${r.lieux?' ('+r.lieux+')':''}`));
+  payRows().forEach(r=>L.push(`${r.name} : ${DAYS.map((d,i)=>r.days[i]?d.slice(0,3)+' '+fmt(r.days[i]):(r.abs[i]?d.slice(0,3)+' '+r.abs[i]:'')).filter(Boolean).join(', ')} — total ${fmt(r.tot)} h${r.lieux?' ('+r.lieux+')':''}${r.absTxt?' ['+r.absTxt+']':''}`));
   const g=affGroups().rows;
   if(g.length){L.push('','Heures par n° de devis / régie :');g.forEach(x=>L.push(`${x.num||'(sans n°) '+[...x.travs].join(' / ')} : ${fmt(x.tot)} h`))}
   return {subject:`Pointage SLVS ${wk}`,body:L.join('\n')};
@@ -977,7 +992,7 @@ function copyText(text,ok){
 const WK_PREFIX='slvs-sem-';
 function saveWeek(){
   if(sample||!week)return;
-  if(!cols.some((c,ci)=>grid[ci].some(x=>x.h)))return;
+  if(!cols.some((c,ci)=>grid[ci].some(x=>x.h)||hasAbs(ci)))return;
   try{
     localStorage.setItem(WK_PREFIX+week.annee+'-'+pad(week.semaine),JSON.stringify({cols,grid,reports,alloc,week:{semaine:week.semaine,annee:week.annee,monday:week.monday?ymd(week.monday):null}}));
   }catch(e){}
@@ -1005,7 +1020,7 @@ function buildWb(){
   const A=[['slvs',week?`SEMAINE ${week.semaine} ${week.annee}`:'']];
   A.push(['NOM',...names]);
   DAYS.forEach((d,di)=>{
-    A.push([d,...cols.map((c,ci)=>grid[ci][di].h===null?'':grid[ci][di].h)]);
+    A.push([d,...cols.map((c,ci)=>grid[ci][di].h===null?(absOf(ci)[di]||''):grid[ci][di].h)]);
     A.push(['lieu',...cols.map((c,ci)=>grid[ci][di].lieu)]);
   });
   A.push(['TOTAL',...cols.map((c,ci)=>total(ci))]);

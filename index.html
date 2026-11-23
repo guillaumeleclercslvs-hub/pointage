@@ -191,8 +191,11 @@ table.xl thead th{display:none}
 .chips label.gk input{width:auto;padding:0}
 .pc .chips label.gk{flex-direction:row;font-size:.9rem}
 .xrows{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
-.xr{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px;width:100%}
+.xr{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,.8fr) auto;gap:6px;width:100%;margin-top:6px}
 .xr input,.xr select{font:inherit;font-size:1rem;padding:9px 8px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);width:100%;min-width:0}
+.gl{border:1px dashed var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:10px;background:var(--panel)}
+.gtot{font-family:var(--font-mono);font-size:.85rem;color:var(--accent)}
+.gtot:empty{display:none}
 .xnote{font-size:.8rem;color:var(--muted)}
 .xnote:empty{display:none}
 .pc-act .same{flex:1 1 11rem}
@@ -204,6 +207,10 @@ table.xl thead th{display:none}
 .nc input{font:inherit;font-size:1.05rem;padding:10px;border:1px solid var(--warn);border-radius:4px;background:var(--panel);color:var(--ink);width:100%;min-width:0}
 .okmsg{color:var(--ok);font-weight:600;margin:0}
 .nav{margin-top:4px}
+.alloc{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.alloc h3{margin:0;font-size:1.05rem}
+.axr{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px}
+.axr input,.axr select{font:inherit;font-size:1rem;padding:9px 8px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);width:100%;min-width:0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:4px;font-weight:600;z-index:20}
 @media (prefers-reduced-motion:no-preference){button{transition:filter .12s}button:hover{filter:brightness(1.08)}}
 body{margin:0}
@@ -250,17 +257,20 @@ body{margin:0}
     </div>
     <p class="note" id="cardsInfo"></p>
     <div class="pc grp" id="grp">
-      <div class="pc-head"><b>Plusieurs personnes, même chantier</b></div>
-      <div class="note" style="margin:0">Coche les personnes, remplis une seule fois, puis applique. Tu pourras ensuite corriger l'une d'elles dans sa fiche.</div>
+      <div class="pc-head"><b>1. Pointage de plusieurs personnes à la fois</b></div>
+      <div class="note" style="margin:0">Coche les personnes qui ont les mêmes heures, saisis la semaine une seule fois (les heures de paie), puis applique. Tu peux aussi saisir chaque personne dans sa fiche plus bas.</div>
       <div class="chips" id="grpWho"></div>
-      <div class="pc-row">
-        <label>Lieu / chantier<input id="gLieu" placeholder="ex. EURIAL" autocomplete="off"></label>
-        <label>N° devis ou régie<input id="gNum" list="numDL" placeholder="facultatif" autocomplete="off"></label>
-        <label>Type<select id="gType"><option>Régie</option><option>Devis</option></select></label>
-      </div>
-      <div id="gX"></div>
-      <div class="pc-days" id="gDays"><label>Lun<input inputmode="decimal" aria-label="Lundi" data-g="0"></label><label>Mar<input inputmode="decimal" aria-label="Mardi" data-g="1"></label><label>Mer<input inputmode="decimal" aria-label="Mercredi" data-g="2"></label><label>Jeu<input inputmode="decimal" aria-label="Jeudi" data-g="3"></label><label>Ven<input inputmode="decimal" aria-label="Vendredi" data-g="4"></label><label>Sam<input inputmode="decimal" aria-label="Samedi" data-g="5"></label><label>Dim<input inputmode="decimal" aria-label="Dimanche" data-g="6"></label></div>
-      <div class="pc-act"><button class="ghost sm" id="g39">10/10/10/9</button><button class="ghost sm" id="g40">8/8/8/8/7</button><button id="gApply">Appliquer à la sélection</button></div>
+      <div id="gMain"></div>
+      <div class="gtot" id="gTot"></div>
+      <div class="pc-act"><button id="gApply">Appliquer à la sélection</button></div>
+    </div>
+    <div class="pc grp" id="rep">
+      <div class="pc-head"><b>2. Équipe sur chantier : répartir les heures</b></div>
+      <div class="note" style="margin:0">Les pointages sont déjà saisis. Coche l'équipe, puis répartis à la main ses heures entre les chantiers (devis ou régie) : tu tapes les heures de l'équipe pour chaque chantier, elles sont retirées du chantier d'origine et partagées entre les personnes. Le pointage de paie ne change pas.</div>
+      <div class="chips" id="rWho"></div>
+      <div id="rXs"></div>
+      <div class="gtot" id="rTot"></div>
+      <div class="pc-act"><button class="ghost sm" id="rAdd" type="button">+ Ajouter un chantier</button><button id="rApply">Appliquer la répartition</button></div>
     </div>
     
     <div id="cards"></div>
@@ -363,7 +373,9 @@ const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)
 const fmt=n=>(Math.round(n*100)/100).toString().replace('.',',');
 const pad=n=>String(n).padStart(2,'0');
 
+let alloc={};
 function reset(){
+  alloc={};
   cols=ROSTER.map(n=>({name:n,spacer:false}));
   grid=cols.map(()=>DAYS.map(()=>({h:null,lieu:'',auto:false})));
   reports=[];week=null;
@@ -445,6 +457,7 @@ function showMsgs(m){extraMsgs=m;renderChecks()}
 function total(c){return grid[c].reduce((s,x)=>s+(x.h||0),0)}
 
 function render(){
+  Object.keys(cardL).forEach(k=>delete cardL[k]);
   $('sampleBanner').hidden=!sample;
   if(week){
     let t=`SEMAINE ${week.semaine} · ${week.annee}`;
@@ -472,7 +485,7 @@ function render(){
   h+='<tr class="total"><th class="rowh">TOTAL</th>'+cols.map((c,ci)=>c.spacer?'<td class="spacer"></td>':`<td id="ct${ci}"></td>`).join('')+'<td id="gt"></td></tr>';
   h+='</tbody>';
   $('grid').innerHTML=h;
-  updateTotals();renderChecks();renderAff();renderPay();renderTeam();renderComplete();renderNums();renderSteps();saveWeek();
+  updateTotals();renderChecks();renderAff();renderPay();renderTeam();renderComplete();renderNums();renderAlloc();renderSteps();saveWeek();
 }
 
 function updateTotals(){
@@ -512,26 +525,27 @@ function affData(){
   cols.forEach((c,ci)=>{
     if(c.spacer)return;
     const rep=reports.find(r=>r.col===ci);
+    let mine=[];
     if(rep&&grid[ci].every(x=>x.h===null||x.auto)){
-      rep.lines.forEach(l=>{const h=num(l.heures);if(!h)return;ent.push({ci,d:l.date?dayIdx(l.date):-1,client:(l.client||'').trim(),type:l.type||'',numero:(l.numero||'').trim(),trav:(l.travaux||'').trim(),h})});
+      rep.lines.forEach(l=>{const h=num(l.heures);if(!h)return;mine.push({ci,d:l.date?dayIdx(l.date):-1,client:(l.client||'').trim(),type:l.type||'',numero:(l.numero||'').trim(),trav:(l.travaux||'').trim(),h})});
     }else{
-      const mine=[];
-      grid[ci].forEach((x,d)=>{
+      if(linesValid(ci)){
+        cols[ci].manual.lines.forEach(L=>L.hd.forEach((hv,d)=>{const h=num(hv)||0;if(h>0)mine.push({ci,d,client:L.lieu||'',type:L.type||'R\u00e9gie',numero:(L.num||'').trim(),trav:L.lieu||'Saisie manuelle',h})}));
+      }else grid[ci].forEach((x,d)=>{
         if(!x.h)return;
-        mine.push({ci,d,client:x.lieu||'',type:(c.manual&&c.manual.type)||'R\u00e9gie',numero:(c.manual&&c.manual.aff)||'',trav:(c.manual&&c.manual.travaux)||x.lieu||'Saisie manuelle',h:x.h});
+        mine.push({ci,d,client:x.lieu||'',type:(c.manual&&c.manual.type)||'Régie',numero:(c.manual&&c.manual.aff)||'',trav:(c.manual&&c.manual.travaux)||x.lieu||'Saisie manuelle',h:x.h});
       });
-      const extra=(c.manual&&c.manual.extra)||[];
-      const more=[];
-      extra.forEach(xt=>{
-        let need=num(xt.h)||0;
-        for(let k=mine.length-1;k>=0&&need>0;k--){
-          const take=Math.min(need,mine[k].h);if(take<=0)continue;
-          mine[k].h-=take;need-=take;
-          more.push(Object.assign({},mine[k],{numero:(xt.num||'').trim(),type:xt.type||mine[k].type,h:take}));
-        }
-      });
-      mine.concat(more).filter(e=>e.h>0).forEach(e=>ent.push(e));
     }
+    const more=[];
+    (alloc[ci]||[]).forEach(xt=>{
+      let need=num(xt.h)||0;
+      for(let k=mine.length-1;k>=0&&need>0;k--){
+        const take=Math.min(need,mine[k].h);if(take<=0)continue;
+        mine[k].h-=take;need-=take;
+        more.push(Object.assign({},mine[k],{numero:(xt.num||'').trim(),type:xt.type||mine[k].type,trav:(xt.num||'').trim()||mine[k].trav,h:take}));
+      }
+    });
+    mine.concat(more).filter(e=>e.h>0).forEach(e=>ent.push(e));
   });
   return ent;
 }
@@ -623,7 +637,7 @@ $('chips').addEventListener('click',e=>{
   const ci=+b.dataset.rm;
   if(total(ci)>0&&pendingRm!==ci){pendingRm=ci;renderTeam();toast(cols[ci].name+' a '+fmt(total(ci))+' h cette semaine. Clique encore pour retirer.');return}
   pendingRm=-1;openSet.clear();
-  cols.splice(ci,1);grid.splice(ci,1);
+  alloc={};cols.splice(ci,1);grid.splice(ci,1);
   reports=reports.filter(r=>r.col!==ci);reports.forEach(r=>{if(r.col>ci)r.col--});
   saveRoster();render();
 });
@@ -665,25 +679,51 @@ function xNote(c){
   el.textContent=left<0?`Attention : ${fmt(-left)} h de trop sur les chantiers`:`${fmt(left)} h restent sur le n° principal (pointage de paie inchangé)`;
   el.style.color=left<0?'var(--warn)':'var(--muted)';
 }
+const cardL={};
+function lineHtml(L,i,n){
+  return `<div class="gl" data-i="${i}">
+    <div class="pc-row">
+      <label>Lieu / chantier<input data-gf="lieu" value="${esc(L.lieu)}" placeholder="ex. EURIAL" autocomplete="off"></label>
+      <label>N° devis ou régie<input data-gf="num" list="numDL" value="${esc(L.num)}" placeholder="facultatif" autocomplete="off"></label>
+      <label>Type<select data-gf="type"><option ${L.type==='Devis'?'':'selected'}>Régie</option><option ${L.type==='Devis'?'selected':''}>Devis</option></select></label>
+    </div>
+    <div class="pc-days">${DAYS.map((d,k)=>`<label>${d.slice(0,3)}<input inputmode="decimal" data-gd="${k}" aria-label="${d}" value="${gFmt(L.hd[k])}"></label>`).join('')}</div>
+    <div class="pc-act">${Object.keys(PRE).map(k=>`<button class="ghost sm" type="button" data-gp="${k}">${PREL[k]}</button>`).join('')}${n>1?'<button class="ghost sm" type="button" data-gdel="1">Retirer ce chantier</button>':''}</div>
+  </div>`;
+}
+function guessLines(ci){
+  if(linesValid(ci))return JSON.parse(JSON.stringify(cols[ci].manual.lines));
+  const map=new Map();
+  affData().filter(e=>e.ci===ci&&e.d>=0).forEach(e=>{
+    const lieu=e.client||(e.trav&&e.trav!=='Saisie manuelle'?e.trav:'');
+    const k=[lieu,e.numero,e.type].join('|');
+    if(!map.has(k))map.set(k,{lieu,num:e.numero||'',type:e.type||'Régie',hd:[null,null,null,null,null,null,null]});
+    const L=map.get(k);L.hd[e.d]=(L.hd[e.d]||0)+e.h;
+  });
+  const a=[...map.values()];return a.length?a:[blankLine()];
+}
+function cardLines(ci){if(!cardL[ci])cardL[ci]=guessLines(ci);return cardL[ci]}
+function applyLines(ci,lines){
+  acted=true;
+  reports=reports.filter(r=>r.col!==ci);
+  grid[ci]=DAYS.map((_,d)=>{
+    const act=lines.filter(L=>num(L.hd[d])>0),h=act.reduce((a,L)=>a+num(L.hd[d]),0);
+    return {h:h||null,lieu:[...new Set(act.map(L=>L.lieu).filter(Boolean))].join(' / '),auto:false};
+  });
+  const m=ensureManual(ci),fl=lines.find(L=>L.num||L.lieu)||lines[0]||blankLine();
+  m.type=fl.type;m.aff=fl.num;m.lines=lines.map(L=>({lieu:L.lieu,num:L.num,type:L.type,hd:L.hd.slice()}));
+}
 function cardHtml(ci,withHours){
   const c=cols[ci],name=esc(c.name),open=total(ci)>0||openSet.has(ci);
   if(!open)return `<div class="pc closed" data-c="${ci}"><b>${name}</b><button class="ghost sm" data-act="open">Saisir les heures</button></div>`;
-  const lieu=(grid[ci].map(x=>x.lieu).find(Boolean))||'';
-  const mn=c.manual||{type:'Régie',aff:''};
-  const days=DAYS.map((d,i)=>`<label>${d.slice(0,3)}<input inputmode="decimal" data-f="d" data-d="${i}" aria-label="${name} ${d}" value="${grid[ci][i].h===null?'':fmt(grid[ci][i].h)}"></label>`).join('');
+  const L=cardLines(ci);
   const same=withHours.filter(s=>s!==ci).map(s=>`<option value="${s}">${esc(cols[s].name)} (${fmt(total(s))} h)</option>`).join('');
   return `<div class="pc" data-c="${ci}"><div class="pc-head"><b>${name}</b><span class="pc-tot" id="pt${ci}">${fmt(total(ci))} h</span></div>
-    <div class="pc-row">
-      <label>Lieu / chantier<input data-f="lieu" value="${esc(lieu)}" placeholder="ex. EURIAL" autocomplete="off"></label>
-      <label>N° devis ou régie<input data-f="num" list="numDL" value="${esc(mn.aff||'')}" placeholder="facultatif" autocomplete="off"></label>
-      <label>Type<select data-f="type"><option ${mn.type==='Régie'?'selected':''}>Régie</option><option ${mn.type==='Devis'?'selected':''}>Devis</option></select></label>
-    </div>
-    ${xrows(mn.extra,'c'+ci)}
-    <div class="pc-days">${days}</div>
+    ${L.map((l,i)=>lineHtml(l,i,L.length)).join('')}
     <div class="pc-act">
-      <button class="ghost sm" data-act="p39">10/10/10/9</button><button class="ghost sm" data-act="p40">8/8/8/8/7</button>
+      <button class="ghost sm" data-act="add" type="button">+ Ajouter un chantier</button>
       <label class="same">Comme (binôme)<select data-f="same"><option value="">— choisir une personne —</option>${same}</select></label>
-      <button class="ghost sm" data-act="clear">Vider</button>
+      <button class="ghost sm" data-act="clear" type="button">Vider</button>
     </div></div>`;
 }
 function renderComplete(){
@@ -698,92 +738,135 @@ function renderComplete(){
 }
 $('showAll').onchange=renderComplete;
 
-const grpSel=new Set();let gExtra=[];
-function renderGx(){$('gX').innerHTML=xrows(gExtra,'g')}
-$('gX').addEventListener('input',e=>{const t=e.target,r=t.closest('.xr');if(!r)return;const x=gExtra[+r.dataset.i],f=t.dataset.f;if(!x)return;
-  if(f==='xnum')x.num=t.value.trim();else if(f==='xtype')x.type=t.value;else if(f==='xh')x.h=t.value.trim()===''?null:num(t.value)});
-$('gX').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;
-  if(b.dataset.act==='xadd')gExtra.push({num:'',type:'R\u00e9gie',h:null});else gExtra.splice(+b.closest('.xr').dataset.i,1);renderGx()});
-
-function renderGroup(){
-  if(!$('gX').innerHTML)renderGx();
-  $('grpWho').innerHTML=cols.map((c,ci)=>c.spacer?'':`<label class="gk"><input type="checkbox" data-gk="${ci}" ${grpSel.has(ci)?'checked':''}>${esc(c.name)}</label>`).join('');
+const grpSel=new Set();
+const blankLine=()=>({lieu:'',num:'',type:'Régie',hd:[null,null,null,null,null,null,null]});
+let gMain=blankLine();
+const rSel=new Set();let rX=[{lieu:'',num:'',type:'Régie',h:null}];
+const PRE={a:[10,10,10,9,null,null,null],b:[8,8,8,8,7,null,null],c:[7.5,7.5,7.5,7.5,5,null,null]};
+const PREL={a:'10/10/10/9',b:'8/8/8/8/7',c:'7,5/7,5/7,5/7,5/5'};
+function gFmt(h){return h==null?'':String(h).replace('.',',')}
+function whoChips(attr,sel,only){
+  return cols.map((c,ci)=>(c.spacer||(only&&!(total(ci)>0)))?'':`<label class="gk"><input type="checkbox" ${attr}="${ci}" ${sel.has(ci)?'checked':''}>${esc(c.name)}${only?' ('+fmt(total(ci))+' h)':''}</label>`).join('');
 }
+function renderGroup(){
+  $('grpWho').innerHTML=whoChips('data-gk',grpSel,false);
+  renderGMain();
+  [...rSel].forEach(c=>{if(!(cols[c]&&total(c)>0))rSel.delete(c)});
+  const ch=whoChips('data-rk',rSel,true);
+  $('rWho').innerHTML=ch||'<span class="note">Aucune heure saisie pour l\'instant : saisis d\'abord les pointages.</span>';
+  renderRX();
+}
+function renderGMain(){
+  const L=gMain;
+  $('gMain').innerHTML=`<div class="gl">
+    <div class="pc-row">
+      <label>Lieu / chantier<input data-gf="lieu" value="${esc(L.lieu)}" placeholder="ex. EURIAL" autocomplete="off"></label>
+      <label>N° devis ou régie<input data-gf="num" list="numDL" value="${esc(L.num)}" placeholder="facultatif" autocomplete="off"></label>
+      <label>Type<select data-gf="type"><option ${L.type==='Devis'?'':'selected'}>Régie</option><option ${L.type==='Devis'?'selected':''}>Devis</option></select></label>
+    </div>
+    <div class="pc-days">${DAYS.map((d,k)=>`<label>${d.slice(0,3)}<input inputmode="decimal" data-gd="${k}" aria-label="${d}" value="${gFmt(L.hd[k])}"></label>`).join('')}</div>
+    <div class="pc-act">${Object.keys(PRE).map(k=>`<button class="ghost sm" type="button" data-gp="${k}">${PREL[k]}</button>`).join('')}</div>
+  </div>`;
+  gTot();
+}
+function gTot(){const t=gMain.hd.reduce((a,h)=>a+(num(h)||0),0);$('gTot').textContent=t?`Par personne : ${fmt(t)} h`:''}
 $('grpWho').addEventListener('change',e=>{const k=e.target.dataset.gk;if(k===undefined)return;e.target.checked?grpSel.add(+k):grpSel.delete(+k)});
-function gSet(P){document.querySelectorAll('#gDays [data-g]').forEach((i,k)=>i.value=P[k]===null?'':String(P[k]).replace('.',','))}
-$('g39').onclick=()=>gSet([10,10,10,9,null,null,null]);
-$('g40').onclick=()=>gSet([8,8,8,8,7,null,null]);
+$('gMain').addEventListener('input',e=>{
+  const t=e.target,L=gMain;
+  if(t.dataset.gf==='lieu')L.lieu=t.value.trim();else if(t.dataset.gf==='num')L.num=t.value.trim();else if(t.dataset.gf==='type')L.type=t.value;
+  else if(t.dataset.gd!==undefined){L.hd[+t.dataset.gd]=t.value.trim()===''?null:num(t.value);gTot()}
+});
+$('gMain').addEventListener('change',e=>{if(e.target.dataset.gf==='num')rememberNum(e.target.value)});
+$('gMain').addEventListener('click',e=>{const b=e.target.closest('[data-gp]');if(!b)return;gMain.hd=PRE[b.dataset.gp].slice();renderGMain()});
 $('gApply').onclick=()=>{
   const sel=[...grpSel].filter(c=>cols[c]&&!cols[c].spacer);
   if(!sel.length){toast('Coche au moins une personne');return}
-  const H=[...document.querySelectorAll('#gDays [data-g]')].map(i=>i.value.trim()===''?null:num(i.value));
-  if(!H.some(Boolean)){toast('Saisis les heures');return}
-  const lieu=$('gLieu').value.trim(),n=$('gNum').value.trim(),ty=$('gType').value;
-  acted=true;rememberNum(n);
-  sel.forEach(c=>{
-    reports=reports.filter(r=>r.col!==c);
-    grid[c]=H.map(h=>({h,lieu:h?lieu:'',auto:false}));
-    const m=ensureManual(c);m.type=ty;m.aff=n;m.extra=gExtra.filter(x=>x.num||x.h).map(x=>({num:x.num,type:x.type,h:x.h}));openSet.add(c);
-  });
+  if(!gMain.hd.some(h=>num(h)>0)){toast('Saisis les heures de la semaine');return}
+  const L={lieu:gMain.lieu,num:gMain.num,type:gMain.type,hd:gMain.hd.slice()};
+  if(L.num)rememberNum(L.num);
+  sel.forEach(c=>{applyLines(c,[JSON.parse(JSON.stringify(L))]);openSet.add(c)});
   const names=sel.map(c=>cols[c].name).join(', ');
-  grpSel.clear();gExtra=[];renderGx();render();toast('Appliqué : '+names);
+  grpSel.clear();gMain=blankLine();render();toast('Pointage appliqué : '+names);
 };
+/* ---- 2. répartition de l'équipe ---- */
+function renderRX(){
+  $('rXs').innerHTML=rX.map((x,i)=>`<div class="xr" data-i="${i}"><input data-xf="lieu" value="${esc(x.lieu)}" placeholder="Lieu / chantier" aria-label="Lieu" autocomplete="off"><input data-xf="num" list="numDL" value="${esc(x.num)}" placeholder="N° devis ou régie" aria-label="N°" autocomplete="off"><select data-xf="type" aria-label="Type"><option ${x.type==='Devis'?'':'selected'}>Régie</option><option ${x.type==='Devis'?'selected':''}>Devis</option></select><input data-xf="h" inputmode="decimal" value="${gFmt(x.h)}" placeholder="heures équipe" aria-label="Heures pour toute l'équipe"><button class="ghost sm" type="button" data-xdel="1" aria-label="Retirer">×</button></div>`).join('');
+  rTot();
+}
+function rTeam(){return [...rSel].filter(c=>cols[c]&&total(c)>0)}
+function rTot(){
+  const team=rTeam(),T=team.reduce((a,c)=>a+total(c),0),x=rX.reduce((a,v)=>a+(num(v.h)||0),0),el=$('rTot');
+  if(!team.length){el.textContent='';return}
+  const left=T-x;
+  el.textContent=left<0?`Attention : ${fmt(-left)} h de trop (heures pointées de l'équipe : ${fmt(T)} h)`:`Équipe : ${fmt(T)} h pointées · réparties sur ces chantiers : ${fmt(x)} h · restent sur le chantier d'origine : ${fmt(left)} h`;
+  el.style.color=left<0?'var(--warn)':'';
+}
+$('rWho').addEventListener('change',e=>{const k=e.target.dataset.rk;if(k===undefined)return;e.target.checked?rSel.add(+k):rSel.delete(+k);rTot()});
+$('rXs').addEventListener('input',e=>{
+  const t=e.target,r=t.closest('.xr');if(!r)return;const x=rX[+r.dataset.i];if(!x)return;
+  const f=t.dataset.xf;if(f==='lieu')x.lieu=t.value.trim();else if(f==='num')x.num=t.value.trim();else if(f==='type')x.type=t.value;else if(f==='h'){x.h=t.value.trim()===''?null:num(t.value);rTot()}
+});
+$('rXs').addEventListener('change',e=>{if(e.target.dataset.xf==='num')rememberNum(e.target.value)});
+$('rXs').addEventListener('click',e=>{const b=e.target.closest('[data-xdel]');if(!b)return;rX.splice(+b.closest('.xr').dataset.i,1);if(!rX.length)rX.push({lieu:'',num:'',type:'Régie',h:null});renderRX()});
+$('rAdd').onclick=()=>{rX.push({lieu:'',num:'',type:'Régie',h:null});renderRX();const l=$('rXs').querySelectorAll('.xr');const i=l[l.length-1].querySelector('[data-xf=lieu]');if(i)i.focus()};
+$('rApply').onclick=()=>{
+  const team=rTeam();if(!team.length){toast('Coche au moins une personne avec des heures');return}
+  const T=team.reduce((a,c)=>a+total(c),0);
+  const rows=rX.filter(x=>(num(x.h)||0)>0);
+  if(!rows.length){toast('Saisis les heures de chaque chantier');return}
+  if(rows.reduce((a,x)=>a+num(x.h),0)>T+0.001){toast('Trop d\'heures par rapport au pointage');return}
+  rows.forEach(x=>{if(x.num)rememberNum(x.num)});
+  team.forEach(c=>{
+    const share=total(c)/T,ex=guessLines(c),nl=rows.map(x=>({lieu:x.lieu,num:x.num,type:x.type,hd:[0,0,0,0,0,0,0],need:Math.round(num(x.h)*share*100)/100}));
+    nl.forEach(n=>{for(let li=ex.length-1;li>=0&&n.need>0.001;li--)for(let d=6;d>=0&&n.need>0.001;d--){
+      const have=num(ex[li].hd[d])||0,t=Math.min(n.need,have);
+      if(t>0){ex[li].hd[d]=Math.round((have-t)*100)/100||null;n.hd[d]=Math.round(((n.hd[d]||0)+t)*100)/100;n.need=Math.round((n.need-t)*100)/100}}});
+    const out=ex.concat(nl.map(n=>({lieu:n.lieu,num:n.num,type:n.type,hd:n.hd.map(h=>h>0?h:null)}))).filter(L=>L.hd.some(h=>num(h)>0));
+    applyLines(c,out);openSet.add(c);
+  });
+  const names=team.map(c=>cols[c].name).join(', ');
+  rSel.clear();rX=[{lieu:'',num:'',type:'Régie',h:null}];render();toast('Répartition appliquée : '+names);
+};
+function linesValid(ci){
+  const m=cols[ci].manual;if(!m||!m.lines||!m.lines.length)return false;
+  return DAYS.every((_,d)=>Math.abs(m.lines.reduce((a,L)=>a+(num(L.hd[d])||0),0)-(grid[ci][d].h||0))<0.01);
+}
+function linesNote(ci){
+  if(!linesValid(ci))return '';
+  return `<div class="xnote" style="display:block">Chantiers : ${cols[ci].manual.lines.map(L=>esc((L.lieu||L.num||'?')+(L.num&&L.lieu?' ('+L.num+')':''))+' '+fmt(L.hd.reduce((a,h)=>a+(num(h)||0),0))+' h').join(' · ')}</div>`;
+}
 function afterCardEdit(c){
-  const t=document.getElementById('pt'+c);if(t)t.textContent=fmt(total(c))+' h';xNote(c);
+  const t=document.getElementById('pt'+c);if(t)t.textContent=fmt(total(c))+' h';
   renderAff();renderPay();renderNums();renderSteps();saveWeek();
 }
 $('cards').addEventListener('input',e=>{
-  const t=e.target,card=t.closest('.pc');if(!card||!t.dataset.f||t.dataset.f==='same')return;
-  const c=+card.dataset.c,f=t.dataset.f;acted=true;
-  if(f==='d'){
-    const x=grid[c][+t.dataset.d],v=t.value.trim();
-    x.h=v===''?null:num(v);x.auto=false;
-    if(x.h&&!x.lieu)x.lieu=card.querySelector('[data-f="lieu"]').value.trim();
-    ensureManual(c);
-  }else if(f==='lieu'){grid[c].forEach(x=>{if(x.h)x.lieu=t.value.trim()});ensureManual(c)}
-  else if(f==='xnum'||f==='xtype'||f==='xh'){
-    const m=ensureManual(c);m.extra=m.extra||[];const x=m.extra[+t.closest('.xr').dataset.i];
-    if(x){if(f==='xnum')x.num=t.value.trim();else if(f==='xtype')x.type=t.value;else if(f==='xh')x.h=t.value.trim()===''?null:num(t.value)}
-  }
-  else if(f==='num'){ensureManual(c).aff=t.value.trim()}
-  else if(f==='type'){ensureManual(c).type=t.value}
-  afterCardEdit(c);
+  const t=e.target,card=t.closest('.pc'),gl=t.closest('.gl');if(!card||!gl)return;
+  const c=+card.dataset.c,L=cardLines(c)[+gl.dataset.i];if(!L)return;
+  if(t.dataset.gf==='lieu')L.lieu=t.value.trim();else if(t.dataset.gf==='num')L.num=t.value.trim();else if(t.dataset.gf==='type')L.type=t.value;
+  else if(t.dataset.gd!==undefined)L.hd[+t.dataset.gd]=t.value.trim()===''?null:num(t.value);
+  applyLines(c,cardLines(c));afterCardEdit(c);
 });
 $('cards').addEventListener('change',e=>{
-  const t=e.target;if(t.dataset.f==='num'||t.dataset.f==='xnum')rememberNum(t.value);if(t.dataset.f!=='same'||!t.value)return;
-  copyFrom(+t.value,+t.closest('.pc').dataset.c);
+  const t=e.target;if(t.dataset.gf==='num')rememberNum(t.value);
+  if(t.dataset.f==='same'&&t.value)copyFrom(+t.value,+t.closest('.pc').dataset.c);
 });
 $('cards').addEventListener('click',e=>{
-  const b=e.target.closest('[data-act]');if(!b)return;
-  const card=b.closest('.pc'),c=+card.dataset.c,a=b.dataset.act;
-  if(a==='open'){openSet.add(c);renderComplete();const i=document.querySelector(`.pc[data-c="${c}"] [data-f="lieu"]`);if(i)i.focus();return}
-  if(a==='xadd'||a==='xdel'){
-    const m=ensureManual(c);m.extra=m.extra||[];acted=true;
-    if(a==='xadd')m.extra.push({num:'',type:m.type||'R\u00e9gie',h:null});else m.extra.splice(+b.closest('.xr').dataset.i,1);
-    openSet.add(c);renderComplete();afterCardEdit(c);
-    if(a==='xadd'){const i=document.querySelector(`.pc[data-c="${c}"] .xr:last-of-type [data-f="xnum"]`);if(i)i.focus()}
-    return}
-  acted=true;
-  if(a==='clear'){grid[c]=blankDays();delete cols[c].manual;reports=reports.filter(r=>r.col!==c);openSet.delete(c);render();return}
-  const lieu=card.querySelector('[data-f="lieu"]').value.trim();
-  const P=a==='p39'?[10,10,10,9,null,null,null]:[8,8,8,8,7,null,null];
-  grid[c]=P.map(h=>({h,lieu:h?lieu:'',auto:false}));ensureManual(c);
-  renderComplete();afterCardEdit(c);
+  const b=e.target.closest('button');if(!b)return;
+  const card=b.closest('.pc'),c=+card.dataset.c;
+  if(b.dataset.act==='open'){openSet.add(c);renderComplete();const i=document.querySelector(`.pc[data-c="${c}"] [data-gf="lieu"]`);if(i)i.focus();return}
+  if(b.dataset.act==='clear'){grid[c]=blankDays();delete cols[c].manual;delete alloc[c];reports=reports.filter(r=>r.col!==c);openSet.delete(c);acted=true;render();return}
+  const L=cardLines(c);
+  if(b.dataset.act==='add'){L.push(blankLine());renderComplete();const g=document.querySelectorAll(`.pc[data-c="${c}"] .gl`);const i=g[g.length-1].querySelector('[data-gf=lieu]');if(i)i.focus();return}
+  const gl=b.closest('.gl');if(!gl)return;const i=+gl.dataset.i;
+  if(b.dataset.gp){L[i].hd=PRE[b.dataset.gp].slice()}
+  else if(b.dataset.gdel){L.splice(i,1)}
+  else return;
+  applyLines(c,L);renderComplete();afterCardEdit(c);
 });
 function copyFrom(src,t){
-  const dy=DAYS.map((_,d)=>d).filter(d=>grid[src][d].h);
-  const ent=affData().filter(e=>e.ci===src&&dy.includes(e.d));
-  if(!ent.length){toast('Rien à copier');renderComplete();return}
-  acted=true;
-  reports=reports.filter(r=>r.col!==t);
-  grid[t]=blankDays();
-  dy.forEach(d=>{const es=ent.filter(e=>e.d===d);grid[t][d]={h:es.reduce((a,e)=>a+e.h,0),lieu:grid[src][d].lieu,auto:true}});
-  const rep={file:'Binôme de '+cols[src].name,tech:cols[t].name,col:t,synthetic:true,sum:0,notes:['Binôme de '+cols[src].name+' : mêmes heures et même lieu copiés.'],lines:[]};
-  ent.forEach(e=>rep.lines.push({date:dayDate(e.d),client:e.client,type:e.type,numero:e.numero,travaux:e.trav,heures:String(e.h),donneurOrdre:'',statut:'Terminé',_tech:cols[t].name}));
-  rep.sum=rep.lines.reduce((a,l)=>a+num(l.heures),0);
-  reports.push(rep);
-  cols[t].manual={type:ent[0].type||'Régie',aff:ent[0].numero||'',travaux:ent[0].trav};
-  openSet.add(t);
+  const lines=JSON.parse(JSON.stringify(cardLines(src)));
+  if(!lines.some(L=>L.hd.some(h=>num(h)>0))){toast('Rien à copier');renderComplete();return}
+  applyLines(t,lines);openSet.add(t);
   render();toast(cols[t].name+' : mêmes heures que '+cols[src].name);
 }
 function renderNums(){
@@ -821,6 +904,9 @@ $('numDone').addEventListener('click',e=>{
   delete assign[decodeURIComponent(b.dataset.unrm)];saveAssign();
   renderAff();renderNums();renderChecks();renderSteps();
 });
+
+function renderAlloc(){}
+function aRefresh(){}
 function renderSteps(){
   const nr=reports.filter(r=>!r.synthetic).length;
   $('b1').textContent=nr?String(nr):'';
@@ -893,7 +979,7 @@ function saveWeek(){
   if(sample||!week)return;
   if(!cols.some((c,ci)=>grid[ci].some(x=>x.h)))return;
   try{
-    localStorage.setItem(WK_PREFIX+week.annee+'-'+pad(week.semaine),JSON.stringify({cols,grid,reports,week:{semaine:week.semaine,annee:week.annee,monday:week.monday?ymd(week.monday):null}}));
+    localStorage.setItem(WK_PREFIX+week.annee+'-'+pad(week.semaine),JSON.stringify({cols,grid,reports,alloc,week:{semaine:week.semaine,annee:week.annee,monday:week.monday?ymd(week.monday):null}}));
   }catch(e){}
   refreshWeeks();
 }
@@ -908,7 +994,7 @@ $('weeksSel').onchange=e=>{
   const k=e.target.value;if(!k)return;
   try{
     const d=JSON.parse(localStorage.getItem(k));
-    cols=d.cols;grid=d.grid;reports=d.reports;
+    cols=d.cols;grid=d.grid;reports=d.reports;alloc=d.alloc||{};
     const m=d.week.monday?d.week.monday.split('-').map(Number):null;
     week={semaine:d.week.semaine,annee:d.week.annee,monday:m?new Date(m[0],m[1]-1,m[2]):null};
     sample=false;extraMsgs=[];pendingRm=-1;goStep(4);

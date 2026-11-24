@@ -10,15 +10,15 @@
 :root{
   --bg:#FBF7F3;--panel:#ffffff;--ink:#1A1A1A;--muted:#65605C;--line:#E2DCD8;
   --accent:#E8432E;--accent-ink:#ffffff;--accent-soft:#FBE1DB;
-  --warn:#8a4b00;--warn-soft:#FBE6C8;--ok:#23804f;--head:#F1ECE8;
+  --warn:#8a4b00;--warn-soft:#FBE6C8;--ok:#23804f;--ok-soft:#E1F3E8;--head:#F1ECE8;
   --font-display:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --font-body:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --font-mono:ui-monospace,"SFMono-Regular","Consolas","Roboto Mono",monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#17140F;--panel:#221E18;--ink:#F2ECDF;--muted:#A39A89;--line:#3A342A;--accent:#FF6B4E;--accent-ink:#1A0F0B;--accent-soft:#3A2018;--warn:#F0B75A;--warn-soft:#3A2B0D;--ok:#6FCB92;--head:#2C271F;color-scheme:dark}}
+  --bg:#17140F;--panel:#221E18;--ink:#F2ECDF;--muted:#A39A89;--line:#3A342A;--accent:#FF6B4E;--accent-ink:#1A0F0B;--accent-soft:#3A2018;--warn:#F0B75A;--warn-soft:#3A2B0D;--ok:#6FCB92;--ok-soft:#16301F;--head:#2C271F;color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#17140F;--panel:#221E18;--ink:#F2ECDF;--muted:#A39A89;--line:#3A342A;--accent:#FF6B4E;--accent-ink:#1A0F0B;--accent-soft:#3A2018;--warn:#F0B75A;--warn-soft:#3A2B0D;--ok:#6FCB92;--head:#2C271F;color-scheme:dark}
+  --bg:#17140F;--panel:#221E18;--ink:#F2ECDF;--muted:#A39A89;--line:#3A342A;--accent:#FF6B4E;--accent-ink:#1A0F0B;--accent-soft:#3A2018;--warn:#F0B75A;--warn-soft:#3A2B0D;--ok:#6FCB92;--ok-soft:#16301F;--head:#2C271F;color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45;
   padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -177,7 +177,7 @@ table.xl thead th{display:none}
 #cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,26rem),1fr));gap:12px}
 .pc{border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:12px;background:var(--bg);min-width:0}
 .pc.closed{flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px}
-.pc-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.pc-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .pc-head b,.pc.closed b{font-family:var(--font-display);font-size:1.2rem;letter-spacing:.05em}
 .pc-tot{font-family:var(--font-mono);font-weight:600;color:var(--accent)}
 .pc-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:8px}
@@ -207,6 +207,17 @@ table.xl thead th{display:none}
 .nc input{font:inherit;font-size:1.05rem;padding:10px;border:1px solid var(--warn);border-radius:4px;background:var(--panel);color:var(--ink);width:100%;min-width:0}
 .okmsg{color:var(--ok);font-weight:600;margin:0}
 .nav{margin-top:4px}
+.pc.ok{border-color:var(--ok);background:var(--ok-soft);box-shadow:inset 5px 0 0 var(--ok)}
+.pc.warn{border-color:var(--warn);background:var(--warn-soft);box-shadow:inset 5px 0 0 var(--warn)}
+.pc .st{font-size:.78rem;font-weight:700;margin-left:auto;margin-right:10px;color:var(--muted)}
+.pc.ok .st{color:var(--ok)}.pc.warn .st{color:var(--warn)}
+.pc.ok .pc-tot{color:var(--ok)}
+.chips label.gk.ok{background:var(--ok-soft);border-color:var(--ok);color:var(--ink);font-weight:600}
+.chips label.gk.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--ink)}
+.chips label.gk.abs{border-style:dashed}
+.dep{font-family:var(--font-mono);font-weight:700;font-size:1.05em}
+.dep-l{display:block;font-size:.82em;line-height:1.35}
+.dep-w{display:block;font-size:.82em;font-weight:700;color:var(--warn)}
 .absrow{display:flex;flex-direction:column;gap:6px}
 .abstitle{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .absrow select{padding:9px 2px;font-size:.9rem}
@@ -232,9 +243,20 @@ body{margin:0}
       <div class="sub" id="weekLabel"></div>
       <label class="wk">Lundi de la semaine <input type="date" id="wkMonday"></label>
       <label class="wk">Semaines enregistrées <select id="weeksSel"></select></label>
+      <div class="sub" id="syncLine"><span id="syncState"></span> <button class="ghost sm" id="syncBtn" type="button">Synchroniser mes appareils</button></div>
     </div>
     <div class="btns"><button class="ghost" id="clearBtn">Tout vider</button></div>
   </div>
+
+  <section class="panel" id="syncPanel" hidden>
+    <h2>Retrouver mes pointages sur tous mes appareils</h2>
+    <p class="note">Tes semaines, ton équipe et tes numéros sont enregistrés automatiquement dans un espace privé de ton compte GitHub (un « gist » secret). À faire une seule fois sur chaque appareil (ordinateur, téléphone, tablette) :</p>
+    <ol class="note" style="margin:0 0 8px 1.2em;padding:0;line-height:1.6">
+      <li><a href="https://github.com/settings/tokens/new?scopes=gist&description=Pointage%20SLVS" target="_blank" rel="noopener">Ouvre cette page GitHub</a>, valide en bas (« Generate token ») et copie la clé affichée (elle commence par ghp_).</li>
+      <li>Colle-la ci-dessous et appuie sur « Activer ».</li>
+    </ol>
+    <div class="addrow"><input id="ghToken" type="password" placeholder="ghp_…" autocomplete="off" aria-label="Clé GitHub"><button id="ghSave" type="button">Activer</button><button class="ghost" id="ghOff" type="button">Désactiver</button></div>
+  </section>
 
   <nav class="steps" id="steps" aria-label="Étapes">
     <button data-go="1" class="on"><span class="sn">1</span>Rapports<span class="bd" id="b1"></span></button>
@@ -605,6 +627,7 @@ function tsv(){
     L.push([d,...cols.map((c,ci)=>c.spacer?'':(grid[ci][di].h===null?(absOf(ci)[di]||''):fmt(grid[ci][di].h)))].join('\t'));
     L.push(['lieu',...cols.map((c,ci)=>c.spacer?'':grid[ci][di].lieu)].join('\t'));
   });
+  L.push(['DÉPLACEMENTS',...cols.map((c,ci)=>c.spacer?'':depOf(ci).days)].join('\t'));
   return L.join('\n');
 }
 function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
@@ -629,6 +652,7 @@ function saveRoster(){
   acted=true;
   ROSTER=cols.filter(c=>!c.spacer).map(c=>c.name);
   try{localStorage.setItem('slvs-roster',JSON.stringify(ROSTER))}catch(e){}
+  touch('roster');scheduleSync();
   if(!dbRef)return;
   const names=ROSTER.slice();
   saving=saving.then(()=>dbRef.doc('config/roster').set({names})).catch(()=>toast('\u00c9quipe non enregistr\u00e9e'));
@@ -722,7 +746,7 @@ function cardHtml(ci,withHours){
   if(!open)return `<div class="pc closed" data-c="${ci}"><b>${name}</b><button class="ghost sm" data-act="open">Saisir heures / absence</button></div>`;
   const L=cardLines(ci);
   const same=withHours.filter(s=>s!==ci).map(s=>`<option value="${s}">${esc(cols[s].name)} (${fmt(total(s))} h)</option>`).join('');
-  return `<div class="pc" data-c="${ci}"><div class="pc-head"><b>${name}</b><span class="pc-tot" id="pt${ci}">${fmt(total(ci))} h</span></div>
+  return `<div class="pc ${pointState(ci)}" data-c="${ci}"><div class="pc-head"><b>${name}</b><span class="st" id="st${ci}">${esc(STT[pointState(ci)])}</span><span class="pc-tot" id="pt${ci}">${fmt(total(ci))} h</span></div>
     ${L.map((l,i)=>lineHtml(l,i,L.length)).join('')}
     <div class="absrow"><div class="abstitle">Absence (CP, RTT, maladie, absent)</div><div class="pc-days">${absSelects(absOf(ci),'data-abs')}</div></div>
     <div class="pc-act">
@@ -751,15 +775,23 @@ const rSel=new Set();let rX=[{lieu:'',num:'',type:'Régie',h:null}];
 const PRE={a:[10,10,10,9,null,null,null],b:[8,8,8,8,7,null,null],c:[7.5,7.5,7.5,7.5,5,null,null]};
 const PREL={a:'10/10/10/9',b:'8/8/8/8/7',c:'7,5/7,5/7,5/7,5/5'};
 function gFmt(h){return h==null?'':String(h).replace('.',',')}
-function whoChips(attr,sel,only){
-  return cols.map((c,ci)=>(c.spacer||(only&&!(total(ci)>0)))?'':`<label class="gk"><input type="checkbox" ${attr}="${ci}" ${sel.has(ci)?'checked':''}>${esc(c.name)}${only?' ('+fmt(total(ci))+' h)':''}</label>`).join('');
+function pointState(ci){
+  if(total(ci)>0){const m=cols[ci].manual;return (grid[ci].some(x=>x.h&&x.lieu)||(m&&m.aff))?'ok':'warn'}
+  return hasAbs(ci)?'abs':'';
 }
-function renderGroup(){
+const STT={ok:'✓ Pointé sur chantier',warn:'Chantier à préciser',abs:'Absence',"":''};
+function renderWhoChips(){
   $('grpWho').innerHTML=whoChips('data-gk',grpSel,false);
-  renderGMain();
   [...rSel].forEach(c=>{if(!(cols[c]&&total(c)>0))rSel.delete(c)});
   const ch=whoChips('data-rk',rSel,true);
   $('rWho').innerHTML=ch||'<span class="note">Aucune heure saisie pour l\'instant : saisis d\'abord les pointages.</span>';
+}
+function whoChips(attr,sel,only){
+  return cols.map((c,ci)=>(c.spacer||(only&&!(total(ci)>0)))?'':`<label class="gk ${pointState(ci)}" title="${esc(STT[pointState(ci)])}"><input type="checkbox" ${attr}="${ci}" ${sel.has(ci)?'checked':''}>${pointState(ci)==='ok'?'\u2713 ':''}${esc(c.name)}${total(ci)>0?' ('+fmt(total(ci))+' h)':''}</label>`).join('');
+}
+function renderGroup(){
+  renderWhoChips();
+  renderGMain();
   renderRX();
 }
 function renderGMain(){
@@ -845,6 +877,9 @@ function linesNote(ci){
 }
 function afterCardEdit(c){
   const t=document.getElementById('pt'+c);if(t)t.textContent=fmt(total(c))+' h';
+  const cd=document.querySelector(`.pc[data-c="${c}"]`);
+  if(cd){cd.classList.remove('ok','warn','abs');const st=pointState(c);if(st)cd.classList.add(st);const b=document.getElementById('st'+c);if(b)b.textContent=STT[st]}
+  renderWhoChips();
   renderAff();renderPay();renderNums();renderSteps();saveWeek();
 }
 $('cards').addEventListener('input',e=>{
@@ -895,12 +930,12 @@ function renderNums(){
 function recentNums(){let a=[];try{a=JSON.parse(localStorage.getItem('slvs-nums')||'[]')}catch(_){}
   Object.values(assign).forEach(v=>{if(v&&!a.includes(v))a.push(v)});return a}
 function rememberNum(v){v=(v||'').trim();if(!v)return;let a=[];try{a=JSON.parse(localStorage.getItem('slvs-nums')||'[]')}catch(_){}
-  a=[v,...a.filter(x=>x!==v)].slice(0,40);try{localStorage.setItem('slvs-nums',JSON.stringify(a))}catch(_){}refreshDL()}
+  a=[v,...a.filter(x=>x!==v)].slice(0,40);try{localStorage.setItem('slvs-nums',JSON.stringify(a))}catch(_){}touch('nums');scheduleSync();refreshDL()}
 function refreshDL(){let d=document.getElementById('numDL');if(!d){d=document.createElement('datalist');d.id='numDL';document.body.appendChild(d)}
   d.innerHTML=recentNums().map(n=>`<option value="${esc(n)}">`).join('')}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-pickn]');if(!b)return;
   const i=b.closest('.nc').querySelector('[data-un]');i.value=b.dataset.pickn;i.dispatchEvent(new Event('change',{bubbles:true}))});
-function saveAssign(){try{localStorage.setItem('slvs-assign',JSON.stringify(assign))}catch(_){}}
+function saveAssign(){try{localStorage.setItem('slvs-assign',JSON.stringify(assign))}catch(_){}touch('assign');scheduleSync()}
 $('numList').addEventListener('change',e=>{
   const t=e.target.closest('[data-un]');if(!t)return;
   const k=decodeURIComponent(t.dataset.un),v=t.value.trim();
@@ -936,9 +971,23 @@ function absOf(ci){const a=(cols[ci]&&cols[ci].abs)||[];return DAYS.map((_,d)=>a
 function hasAbs(ci){return absOf(ci).some(Boolean)}
 function absTxt(a){const n={};a.forEach(x=>{if(x)n[x]=(n[x]||0)+1});return Object.keys(n).map(k=>`${ABSN[k]||k} ${n[k]} j`).join(' \u00b7 ')}
 function absSelects(a,attr){return DAYS.map((d,i)=>`<label>${d.slice(0,3)}<select ${attr}="${i}" aria-label="Absence ${d}" title="Absence ${d}">${ABSO.map(o=>`<option value="${o[0]}" ${(a[i]||'')===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></label>`).join('')}
+const NODEP=/^(atelier|slvs|d[eé]p[oô]t|bureau|dieppe atelier)$/i;
+function depOf(ci){
+  const per=new Map();let days=0,nolieu=0,split=0;
+  grid[ci].forEach(x=>{
+    if(!x.h)return;
+    const ls=(x.lieu||'').split(' / ').map(v=>v.trim()).filter(v=>v&&!NODEP.test(v));
+    if(!(x.lieu||'').trim())nolieu++;
+    if(ls.length)days++;
+    if(ls.length>1)split++;
+    ls.forEach(l=>per.set(l,(per.get(l)||0)+1));
+  });
+  return {days,nolieu,split,per:[...per.entries()]};
+}
+function depTxt(d){return d.per.map(([l,n])=>`${l} ${n} j`).join(' · ')}
 function payRows(){
   return cols.map((c,ci)=>({c,ci})).filter(x=>!x.c.spacer&&(total(x.ci)>0||hasAbs(x.ci))).map(({c,ci})=>({
-    name:c.name,days:grid[ci].map(x=>x.h||0),abs:absOf(ci),absTxt:absTxt(absOf(ci)),tot:total(ci),
+    name:c.name,days:grid[ci].map(x=>x.h||0),dep:depOf(ci),abs:absOf(ci),absTxt:absTxt(absOf(ci)),tot:total(ci),
     lieux:[...new Set(grid[ci].flatMap(x=>x.lieu.split(' / ').map(s=>s.trim()).filter(Boolean)))].join(', ')}));
 }
 function renderPay(){
@@ -951,21 +1000,21 @@ function renderPay(){
   const ds=DAYS.map((_,d)=>rows.reduce((a,r)=>a+r.days[d],0));
   const gt=rows.reduce((a,r)=>a+r.tot,0);
   const cell=(h,we,code)=>`<td class="mono ${we?'we':''} ${h||code?'':'zero'} ${code?'abscell':''}">${h?fmt(h)+(code?' +'+code:''):(code||'\u00b7')}</td>`;
-  $('payTable').innerHTML='<thead><tr><th class="l">Nom</th>'+DAYS.map((d,i)=>`<th class="${i>4?'we':''}">${d.slice(0,3)}</th>`).join('')+`<th>Total</th><th class="l">Lieux</th></tr></thead><tbody>`+
-   rows.map(r=>`<tr><td class="l nm">${esc(r.name)}</td>`+r.days.map((h,i)=>cell(h,i>4,r.abs[i])).join('')+`<td class="mono tot">${fmt(r.tot)}</td><td class="lx">${esc(r.lieux)}${r.absTxt?'<br><b>'+esc(r.absTxt)+'</b>':''}</td></tr>`).join('')+
-   `</tbody><tfoot><tr><th>Total</th>`+ds.map(h=>`<td class="mono">${h?fmt(h):''}</td>`).join('')+`<td class="mono">${fmt(gt)}</td><td></td></tr></tfoot>`;
+  $('payTable').innerHTML='<thead><tr><th class="l">Nom</th>'+DAYS.map((d,i)=>`<th class="${i>4?'we':''}">${d.slice(0,3)}</th>`).join('')+`<th>Total</th><th class="l">Déplacements</th></tr></thead><tbody>`+
+   rows.map(r=>`<tr><td class="l nm">${esc(r.name)}</td>`+r.days.map((h,i)=>cell(h,i>4,r.abs[i])).join('')+`<td class="mono tot">${fmt(r.tot)}</td><td class="lx"><span class="dep">${r.dep.days}</span> <small>dépl.</small>${r.dep.per.map(([l,n])=>`<span class="dep-l">${esc(l)} : ${n} j</span>`).join('')}${r.dep.split?`<span class="dep-l"><i>dont ${r.dep.split} j sur 2 chantiers</i></span>`:''}${r.dep.nolieu?`<span class="dep-w">${r.dep.nolieu} j sans lieu</span>`:''}${r.absTxt?'<span class="dep-l"><b>'+esc(r.absTxt)+'</b></span>':''}</td></tr>`).join('')+
+   `</tbody><tfoot><tr><th>Total</th>`+ds.map(h=>`<td class="mono">${h?fmt(h):''}</td>`).join('')+`<td class="mono">${fmt(gt)}</td><td class="lx"><span class="dep">${rows.reduce((a,r)=>a+r.dep.days,0)}</span> <small>dépl.</small></td></tr></tfoot>`;
 }
 $('payCopy').onclick=()=>{
   const rows=payRows();
-  const L=[['Nom',...DAYS.map(d=>d.slice(0,3)),'Total','Lieux'].join('\t')];
-  rows.forEach(r=>L.push([r.name,...r.days.map((h,i)=>h?fmt(h)+(r.abs[i]?' +'+r.abs[i]:''):(r.abs[i]||'')),fmt(r.tot),[r.lieux,r.absTxt].filter(Boolean).join(' — ')].join('\t')));
+  const L=[['Nom',...DAYS.map(d=>d.slice(0,3)),'Total','Déplacements (jours)','Détail par lieu'].join('\t')];
+  rows.forEach(r=>L.push([r.name,...r.days.map((h,i)=>h?fmt(h)+(r.abs[i]?' +'+r.abs[i]:''):(r.abs[i]||'')),fmt(r.tot),r.dep.days,[depTxt(r.dep)+(r.dep.split?' (dont '+r.dep.split+' j sur 2 chantiers)':''),r.absTxt].filter(Boolean).join(' — ')].join('\t')));
   copyText(L.join('\n'),'Résumé copié');
 };
 
 function mailText(){
   const wk=week?`Semaine ${week.semaine} ${week.annee}`:'Pointage';
   const L=[`Pointage SLVS — ${wk}`,''];
-  payRows().forEach(r=>L.push(`${r.name} : ${DAYS.map((d,i)=>r.days[i]?d.slice(0,3)+' '+fmt(r.days[i]):(r.abs[i]?d.slice(0,3)+' '+r.abs[i]:'')).filter(Boolean).join(', ')} — total ${fmt(r.tot)} h${r.lieux?' ('+r.lieux+')':''}${r.absTxt?' ['+r.absTxt+']':''}`));
+  payRows().forEach(r=>L.push(`${r.name} : ${DAYS.map((d,i)=>r.days[i]?d.slice(0,3)+' '+fmt(r.days[i]):(r.abs[i]?d.slice(0,3)+' '+r.abs[i]:'')).filter(Boolean).join(', ')} — total ${fmt(r.tot)} h — ${r.dep.days} déplacement${r.dep.days>1?'s':''}${r.dep.per.length?' ('+depTxt(r.dep)+(r.dep.split?', dont '+r.dep.split+' j sur 2 chantiers':'')+')':''}${r.absTxt?' ['+r.absTxt+']':''}`));
   const g=affGroups().rows;
   if(g.length){L.push('','Heures par n° de devis / régie :');g.forEach(x=>L.push(`${x.num||'(sans n°) '+[...x.travs].join(' / ')} : ${fmt(x.tot)} h`))}
   return {subject:`Pointage SLVS ${wk}`,body:L.join('\n')};
@@ -994,10 +1043,11 @@ function saveWeek(){
   if(sample||!week)return;
   if(!cols.some((c,ci)=>grid[ci].some(x=>x.h)||hasAbs(ci)))return;
   try{
-    localStorage.setItem(WK_PREFIX+week.annee+'-'+pad(week.semaine),JSON.stringify({cols,grid,reports,alloc,week:{semaine:week.semaine,annee:week.annee,monday:week.monday?ymd(week.monday):null}}));
+    localStorage.setItem(WK_PREFIX+week.annee+'-'+pad(week.semaine),JSON.stringify({updated:(curAt=Date.now()),cols,grid,reports,alloc,week:{semaine:week.semaine,annee:week.annee,monday:week.monday?ymd(week.monday):null}}));
   }catch(e){}
-  refreshWeeks();
+  refreshWeeks();scheduleSync();
 }
+let curAt=0;
 function refreshWeeks(){
   let keys=[];
   try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(WK_PREFIX))keys.push(k)}}catch(e){}
@@ -1005,16 +1055,16 @@ function refreshWeeks(){
   const cur=week?WK_PREFIX+week.annee+'-'+pad(week.semaine):'';
   $('weeksSel').innerHTML='<option value="">\u2014 ouvrir une semaine \u2014</option>'+keys.map(k=>{const [a,w]=k.slice(WK_PREFIX.length).split('-');return `<option value="${k}" ${k===cur?'selected':''}>Semaine ${+w} \u00b7 ${a}</option>`}).join('');
 }
-$('weeksSel').onchange=e=>{
-  const k=e.target.value;if(!k)return;
+function openWeekKey(k,step){
   try{
     const d=JSON.parse(localStorage.getItem(k));
-    cols=d.cols;grid=d.grid;reports=d.reports;alloc=d.alloc||{};
+    cols=d.cols;grid=d.grid;reports=d.reports;alloc=d.alloc||{};curAt=d.updated||0;
     const m=d.week.monday?d.week.monday.split('-').map(Number):null;
     week={semaine:d.week.semaine,annee:d.week.annee,monday:m?new Date(m[0],m[1]-1,m[2]):null};
-    sample=false;extraMsgs=[];pendingRm=-1;goStep(4);
-  }catch(err){toast('Semaine illisible')}
-};
+    sample=false;extraMsgs=[];pendingRm=-1;goStep(step||4);return true;
+  }catch(err){toast('Semaine illisible');return false}
+}
+$('weeksSel').onchange=e=>{const k=e.target.value;if(k)openWeekKey(k)};
 function buildWb(){
   const names=cols.map(c=>c.name);
   const A=[['slvs',week?`SEMAINE ${week.semaine} ${week.annee}`:'']];
@@ -1024,6 +1074,7 @@ function buildWb(){
     A.push(['lieu',...cols.map((c,ci)=>grid[ci][di].lieu)]);
   });
   A.push(['TOTAL',...cols.map((c,ci)=>total(ci))]);
+  A.push(['DÉPLACEMENTS',...cols.map((c,ci)=>depOf(ci).days)]);
   const ws=XLSX.utils.aoa_to_sheet(A);
   ws['!cols']=[{wch:10},...cols.map(()=>({wch:12}))];
   const wb=XLSX.utils.book_new();
@@ -1037,21 +1088,115 @@ function xlsxDownload(){
 $('xlsxBtn').onclick=xlsxDownload;
 $('printBtn').onclick=()=>window.print();
 $('payPrint').onclick=()=>window.print();
+/* ===== Synchronisation entre appareils ===== */
+const SYNC_NAME='pointage-slvs.json';
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(_){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}},del(k){try{localStorage.removeItem(k)}catch(_){}}};
+function touch(n){const a=LS.get('slvs-meta-at',{});a[n]=Date.now();LS.set('slvs-meta-at',a)}
+function localState(){
+  const weeks={};
+  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(WK_PREFIX)){try{weeks[k]=JSON.parse(localStorage.getItem(k))}catch(_){}}}}catch(_){}
+  const at=LS.get('slvs-meta-at',{});
+  return {v:1,roster:{names:LS.get('slvs-roster',null),at:at.roster||0},assign:{data:LS.get('slvs-assign',{}),at:at.assign||0},nums:{data:LS.get('slvs-nums',[]),at:at.nums||0},weeks};
+}
+function mergeStates(a,b){
+  const r=(a.roster&&a.roster.at)>=(b.roster&&b.roster.at)?a.roster:b.roster;
+  const aOld=(a.assign&&a.assign.at||0)>=(b.assign&&b.assign.at||0)?[b.assign,a.assign]:[a.assign,b.assign];
+  const assignM={at:Math.max(a.assign&&a.assign.at||0,b.assign&&b.assign.at||0),data:Object.assign({},aOld[0]&&aOld[0].data,aOld[1]&&aOld[1].data)};
+  const nA=(a.nums&&a.nums.at||0)>=(b.nums&&b.nums.at||0)?[a.nums,b.nums]:[b.nums,a.nums];
+  const nums={at:Math.max(a.nums&&a.nums.at||0,b.nums&&b.nums.at||0),data:[...new Set([...(nA[0]&&nA[0].data||[]),...(nA[1]&&nA[1].data||[])])].slice(0,40)};
+  const weeks=Object.assign({},b.weeks||{});
+  Object.keys(a.weeks||{}).forEach(k=>{if(!weeks[k]||((a.weeks[k].updated||0)>=(weeks[k].updated||0)))weeks[k]=a.weeks[k]});
+  return {v:1,roster:r||{names:null,at:0},assign:assignM,nums,weeks};
+}
+function applyState(m){
+  const ch={roster:false,weeks:[]};
+  const at=LS.get('slvs-meta-at',{});
+  if(m.roster&&Array.isArray(m.roster.names)&&m.roster.names.length&&(m.roster.at||0)>(at.roster||0)){LS.set('slvs-roster',m.roster.names);at.roster=m.roster.at;ch.roster=true}
+  if(m.assign&&(m.assign.at||0)>(at.assign||0)){LS.set('slvs-assign',m.assign.data||{});at.assign=m.assign.at;assign=m.assign.data||{}}
+  if(m.nums&&(m.nums.at||0)>(at.nums||0)){LS.set('slvs-nums',m.nums.data||[]);at.nums=m.nums.at}
+  LS.set('slvs-meta-at',at);
+  Object.keys(m.weeks||{}).forEach(k=>{
+    const cur=LS.get(k,null);
+    if(!cur||(m.weeks[k].updated||0)>(cur.updated||0)){LS.set(k,m.weeks[k]);ch.weeks.push(k)}
+  });
+  return ch;
+}
+async function gh(path,opt){
+  const t=LS.get('slvs-gh-token',null);
+  const r=await fetch('https://api.github.com'+path,Object.assign({},opt||{},{headers:{Authorization:'Bearer '+t,Accept:'application/vnd.github+json','Content-Type':'application/json'}}));
+  if(!r.ok){const e=new Error('GitHub '+r.status);e.status=r.status;throw e}
+  return r.json();
+}
+async function gistId(){
+  let id=LS.get('slvs-gh-gist',null);if(id)return id;
+  const list=await gh('/gists?per_page=100');
+  const g=list.find(x=>x.files&&x.files[SYNC_NAME]);
+  if(g){LS.set('slvs-gh-gist',g.id);return g.id}
+  return null;
+}
+const backends={
+  gist:{
+    async read(){const id=await gistId();if(!id)return null;const g=await gh('/gists/'+id);const f=g.files&&g.files[SYNC_NAME];if(!f)return null;
+      let txt=f.content;if(f.truncated){txt=await (await fetch(f.raw_url)).text()}return JSON.parse(txt)},
+    async write(st){const id=await gistId();const body=JSON.stringify({description:'Pointage SLVS (sauvegarde automatique)',public:false,files:{[SYNC_NAME]:{content:JSON.stringify(st)}}});
+      if(!id){const g=await gh('/gists',{method:'POST',body});LS.set('slvs-gh-gist',g.id)}else await gh('/gists/'+id,{method:'PATCH',body})}
+  },
+  db:{
+    async read(){const sn=await dbRef.doc('sync/state').get();return sn.exists&&sn.data()&&sn.data().json?JSON.parse(sn.data().json):null},
+    async write(st){await dbRef.doc('sync/state').set({json:JSON.stringify(st),at:Date.now()})}
+  }
+};
+function backend(){if(dbRef)return backends.db;if(LS.get('slvs-gh-token',null))return backends.gist;return null}
+function setSyncUi(t,cls){const el=$('syncState');if(!el)return;el.textContent=t;el.style.color=cls==='err'?'var(--warn)':'';
+  const b=$('syncBtn');if(b)b.hidden=!!dbRef||!!LS.get('slvs-gh-token',null);}
+let syncTimer=null,syncBusy=false,syncAgain=false;
+function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,1500)}
+function latestWeekKey(){return Object.keys(localState().weeks).sort().pop()||null}
+async function syncNow(){
+  const be=backend();
+  if(!be){setSyncUi('Enregistré sur cet appareil seulement');return null}
+  if(syncBusy){syncAgain=true;return null}
+  syncBusy=true;let ch=null;
+  try{
+    setSyncUi('Synchronisation…');
+    const remote=await be.read();
+    const loc=localState();
+    const merged=remote?mergeStates(loc,remote):loc;
+    ch=applyState(merged);
+    if(!remote||JSON.stringify(remote)!==JSON.stringify(merged))await be.write(merged);
+    const d=new Date();setSyncUi('✓ Synchronisé à '+pad(d.getHours())+':'+pad(d.getMinutes()));
+    refreshDL();refreshWeeks();
+    if(week&&!sample){const k=WK_PREFIX+week.annee+'-'+pad(week.semaine);if(ch.weeks.includes(k)){openWeekKey(k,curStep);toast('Mis à jour depuis un autre appareil')}}
+  }catch(e){
+    if(e&&(e.status===401||e.status===403)){setSyncUi('Clé GitHub refusée : réactive la synchronisation','err')}
+    else setSyncUi('Hors connexion : synchronisation plus tard','err');
+  }finally{syncBusy=false;if(syncAgain){syncAgain=false;scheduleSync()}}
+  return ch;
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNow()});
+$('syncBtn').onclick=()=>{$('syncPanel').hidden=!$('syncPanel').hidden};
+$('ghSave').onclick=async()=>{
+  const v=$('ghToken').value.trim();if(!v){toast('Colle ta clé GitHub');return}
+  LS.set('slvs-gh-token',v);LS.del('slvs-gh-gist');$('ghToken').value='';
+  const ch=await syncNow();
+  if(LS.get('slvs-gh-token',null)){$('syncPanel').hidden=true;toast('Synchronisation activée');if(ch&&(ch.roster||ch.weeks.length)&&!acted){const k=latestWeekKey();if(k)openWeekKey(k,4)}}
+};
+$('ghOff').onclick=()=>{LS.del('slvs-gh-token');LS.del('slvs-gh-gist');$('syncPanel').hidden=true;setSyncUi('Enregistré sur cet appareil seulement');toast('Synchronisation désactivée')};
 refreshWeeks();
 reset();sample=true;loadReport(SAMPLE,'S45-2026-cedric-toutain.json');goStep(1);
 (async()=>{
-  let names=null;
-  try{const raw=localStorage.getItem('slvs-roster');if(raw)names=JSON.parse(raw)}catch(e){}
-  try{
-    if(window.claude&&window.claude.use){
-      dbRef=await window.claude.use('db');
-      if(dbRef){const sn=await dbRef.doc('config/roster').get();
-        if(sn.exists&&sn.data()&&Array.isArray(sn.data().names)&&sn.data().names.length)names=sn.data().names}
-    }
-  }catch(e){dbRef=null}
-  if(Array.isArray(names)&&names.length&&!acted&&JSON.stringify(names)!==JSON.stringify(ROSTER)){
+  try{if(window.claude&&window.claude.use){dbRef=await window.claude.use('db')}}catch(e){dbRef=null}
+  await syncNow();
+  let names=LS.get('slvs-roster',null);
+  if(!(Array.isArray(names)&&names.length)&&dbRef){
+    try{const sn=await dbRef.doc('config/roster').get();if(sn.exists&&sn.data()&&Array.isArray(sn.data().names)&&sn.data().names.length)names=sn.data().names}catch(e){}
+  }
+  if(acted)return;
+  if(Array.isArray(names)&&names.length&&JSON.stringify(names)!==JSON.stringify(ROSTER)){
     ROSTER=names;reset();sample=true;loadReport(SAMPLE,'S45-2026-cedric-toutain.json');goStep(curStep);
   }
+  const k=latestWeekKey();
+  if(k&&sample)openWeekKey(k,4);
 })();
 </script>
 

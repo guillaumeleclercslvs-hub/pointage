@@ -157,6 +157,7 @@ button.sm{padding:5px 11px;font-size:.85rem}
   #pay table.xl tfoot th.l{font-size:13pt}
   #pay table.xl tfoot td{font-size:16pt;border-top:2.5px solid #000}
   #pay .sig{font-size:11pt;margin-top:18px}
+  #pay{zoom:var(--pz,1)}
   #pay #payTable tbody tr td{border-bottom:2px solid #333!important}
   #pay #payTable tbody tr:nth-child(odd) td:not(.tot){background:#fff!important}
   #pay #payTable tbody tr:nth-child(even) td:not(.tot){background:#EDE6E0!important}
@@ -1031,6 +1032,10 @@ function renderPay(){
   if(!rows.length){$('payTable').innerHTML='<tbody><tr><td class="l">Aucune heure saisie.</td></tr></tbody>';return}
   const ds=DAYS.map((_,d)=>rows.reduce((a,r)=>a+r.days[d],0));
   const gt=rows.reduce((a,r)=>a+r.tot,0);
+  {const ln=r=>1+(r.dep.per.length?1:0)+(r.dep.split?1:0)+(r.dep.nolieu?1:0)+(r.absTxt?1:0);
+   const nAff=Math.max(1,Math.ceil(affGroups().rows.length/10));
+   const H=430+rows.reduce((a,r)=>a+Math.max(46,29+ln(r)*20),0)+(nAff-1)*90;
+   $('pay').style.setProperty('--pz',Math.max(.35,Math.min(1,680/H)).toFixed(3));}
   const cell=(h,we,code)=>`<td class="mono ${we?'we':''} ${h||code?'':'zero'} ${code?'abscell':''}">${h?fmt(h)+(code?' +'+code:''):(code||'\u00b7')}</td>`;
   $('payTable').innerHTML='<thead><tr><th class="l">Nom</th>'+DAYS.map((d,i)=>`<th class="${i>4?'we':''}">${d.slice(0,3)}</th>`).join('')+`<th>Total</th><th class="l">Déplacements</th></tr></thead><tbody>`+
    rows.map(r=>`<tr><td class="l nm">${esc(r.name)}</td>`+r.days.map((h,i)=>cell(h,i>4,r.abs[i])).join('')+`<td class="mono tot">${fmt(r.tot)}</td><td class="lx"><span class="dep">${r.dep.days}</span> <small>dépl.</small>${r.dep.per.map(([l,n])=>`<span class="dep-l">${esc(l)} : ${n} j</span>`).join('')}${r.dep.split?`<span class="dep-l"><i>dont ${r.dep.split} j sur 2 chantiers</i></span>`:''}${r.dep.nolieu?`<span class="dep-w">${r.dep.nolieu} j sans lieu</span>`:''}${r.absTxt?'<span class="dep-l"><b>'+esc(r.absTxt)+'</b></span>':''}</td></tr>`).join('')+

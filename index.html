@@ -278,7 +278,7 @@ body{margin:0}
       <label class="wk">Semaines enregistrées <select id="weeksSel"></select></label>
       <div class="sub" id="syncLine"><span id="syncState"></span> <button class="ghost sm" id="syncBtn" type="button">Synchroniser mes appareils</button></div>
     </div>
-    <div class="btns"><button class="ghost" id="bkBtn" type="button">Sauvegarder (.json)</button><button class="ghost" id="rsBtn" type="button">Restaurer une sauvegarde</button><select id="histSel" aria-label="Versions précédentes" hidden></select><input type="file" id="rsFile" accept=".json,application/json" hidden><button class="ghost" id="clearBtn">Tout vider</button></div>
+    <div class="btns"><button class="ghost" id="bkBtn" type="button">Sauvegarder (.json)</button><button class="ghost" id="rsBtn" type="button">Restaurer une sauvegarde</button><select id="delSel" aria-label="Supprimer une semaine"></select><select id="histSel" aria-label="Versions précédentes" hidden></select><input type="file" id="rsFile" accept=".json,application/json" hidden><button class="ghost" id="clearBtn">Tout vider</button></div>
   </div>
 
   <section class="panel" id="syncPanel" hidden>
@@ -317,7 +317,7 @@ body{margin:0}
     <p class="note" id="cardsInfo"></p>
     <div class="pc grp" id="grp">
       <div class="pc-head"><b>1. Pointage de plusieurs personnes à la fois</b></div>
-      <div class="note" style="margin:0">Coche les personnes qui ont les mêmes heures, saisis la semaine une seule fois (les heures de paie), puis applique. Tu peux aussi saisir chaque personne dans sa fiche plus bas.</div>
+      <div class="note" style="margin:0">Coche les personnes qui ont les mêmes heures, saisis les heures de la semaine (heures de paie) et les absences, puis applique. Les chantiers, devis et régies se complètent ensuite dans le bloc 2 ci-dessous.</div>
       <div class="chips" id="grpWho"></div>
       <div id="gMain"></div>
       <div class="gtot" id="gTot"></div>
@@ -329,7 +329,7 @@ body{margin:0}
       <div class="chips" id="rWho"></div>
       <div id="rXs"></div>
       <div class="gtot" id="rTot"></div>
-      <div class="pc-act"><button class="ghost sm" id="rAdd" type="button">+ Ajouter un chantier</button><button id="rApply">Appliquer la répartition</button></div>
+      <div class="pc-act"><button class="ghost sm" id="rAdd" type="button">+ Ajouter un chantier</button><button id="rApply" disabled>Appliquer la répartition</button></div>
     </div>
     
     <div id="cards"></div>
@@ -831,11 +831,6 @@ function renderGroup(){
 function renderGMain(){
   const L=gMain;
   $('gMain').innerHTML=`<div class="gl">
-    <div class="pc-row">
-      <label>Lieu / chantier<input data-gf="lieu" value="${esc(L.lieu)}" placeholder="ex. EURIAL" autocomplete="off"></label>
-      <label>N° devis ou régie<input data-gf="num" list="numDL" value="${esc(L.num)}" placeholder="facultatif" autocomplete="off"></label>
-      <label>Type<select data-gf="type"><option ${L.type==='Devis'?'':'selected'}>Régie</option><option ${L.type==='Devis'?'selected':''}>Devis</option></select></label>
-    </div>
     <div class="pc-days">${DAYS.map((d,k)=>`<label>${d.slice(0,3)}<input inputmode="decimal" data-gd="${k}" aria-label="${d}" value="${gFmt(L.hd[k])}"></label>`).join('')}</div>
     <div class="pc-act">${Object.keys(PRE).map(k=>`<button class="ghost sm" type="button" data-gp="${k}">${PREL[k]}</button>`).join('')}</div>
     <div class="absrow"><div class="abstitle">Absence (CP, RTT, maladie, absent)</div><div class="pc-days">${absSelects(L.abs,'data-gabs')}</div></div>
@@ -856,8 +851,7 @@ $('gApply').onclick=()=>{
   if(!sel.length){toast('Coche au moins une personne');return}
   const hasH=gMain.hd.some(h=>num(h)>0),hasA=gMain.abs.some(Boolean);
   if(!hasH&&!hasA){toast('Saisis les heures ou une absence');return}
-  const L={lieu:gMain.lieu,num:gMain.num,type:gMain.type,hd:gMain.hd.slice()};
-  if(L.num)rememberNum(L.num);
+  const L={lieu:'',num:'',type:'Régie',hd:gMain.hd.slice()};
   sel.forEach(c=>{if(hasH)applyLines(c,[JSON.parse(JSON.stringify(L))]);if(hasA)cols[c].abs=gMain.abs.slice();openSet.add(c)});
   const names=sel.map(c=>cols[c].name).join(', ');
   grpSel.clear();gMain=newG();render();toast('Pointage appliqué : '+names);
@@ -872,8 +866,10 @@ function rTot(){
   const team=rTeam(),T=team.reduce((a,c)=>a+total(c),0),x=rX.reduce((a,v)=>a+(num(v.h)||0),0),el=$('rTot');
   if(!team.length){el.textContent='';return}
   const left=T-x;
-  el.textContent=left<0?`Attention : ${fmt(-left)} h de trop (heures pointées de l'équipe : ${fmt(T)} h)`:`Équipe : ${fmt(T)} h pointées · réparties sur ces chantiers : ${fmt(x)} h · restent sur le chantier d'origine : ${fmt(left)} h`;
-  el.style.color=left<0?'var(--warn)':'';
+  const ok=Math.abs(left)<0.001&&rX.filter(v=>(num(v.h)||0)>0).every(v=>v.lieu||v.num);
+  el.textContent=left<-0.001?`Attention : ${fmt(-left)} h de trop (heures pointées de l'équipe : ${fmt(T)} h)`:left>0.001?`Équipe : ${fmt(T)} h pointées · réparties : ${fmt(x)} h · reste ${fmt(left)} h à répartir sur une affaire`:ok?`✓ Les ${fmt(T)} h de l'équipe sont toutes réparties sur une affaire`:`Indique le lieu ou le n° de chaque affaire`;
+  el.style.color=ok?'':'var(--warn)';
+  const b=$('rApply');if(b)b.disabled=!ok;
 }
 $('rWho').addEventListener('change',e=>{const k=e.target.dataset.rk;if(k===undefined)return;e.target.checked?rSel.add(+k):rSel.delete(+k);rTot()});
 $('rXs').addEventListener('input',e=>{
@@ -888,10 +884,12 @@ $('rApply').onclick=()=>{
   const T=team.reduce((a,c)=>a+total(c),0);
   const rows=rX.filter(x=>(num(x.h)||0)>0);
   if(!rows.length){toast('Saisis les heures de chaque chantier');return}
-  if(rows.reduce((a,x)=>a+num(x.h),0)>T+0.001){toast('Trop d\'heures par rapport au pointage');return}
+  if(Math.abs(rows.reduce((a,x)=>a+num(x.h),0)-T)>0.001){toast('Toutes les heures de l\'équipe doivent être réparties sur une affaire');return}
+  if(rows.some(x=>!x.lieu&&!x.num)){toast('Indique le lieu ou le n° de chaque affaire');return}
   rows.forEach(x=>{if(x.num)rememberNum(x.num)});
   team.forEach(c=>{
-    const share=total(c)/T,ex=guessLines(c),nl=rows.map(x=>({lieu:x.lieu,num:x.num,type:x.type,hd:[0,0,0,0,0,0,0],need:Math.round(num(x.h)*share*100)/100}));
+    const share=total(c)/T,ex=guessLines(c);let left=total(c);
+    const nl=rows.map((x,i)=>{const nd=i===rows.length-1?left:Math.round(num(x.h)*share*100)/100;left=Math.round((left-nd)*100)/100;return {lieu:x.lieu,num:x.num,type:x.type,hd:[0,0,0,0,0,0,0],need:nd}});
     nl.forEach(n=>{for(let li=ex.length-1;li>=0&&n.need>0.001;li--)for(let d=6;d>=0&&n.need>0.001;d--){
       const have=num(ex[li].hd[d])||0,t=Math.min(n.need,have);
       if(t>0){ex[li].hd[d]=Math.round((have-t)*100)/100||null;n.hd[d]=Math.round(((n.hd[d]||0)+t)*100)/100;n.need=Math.round((n.need-t)*100)/100}}});
@@ -1091,6 +1089,8 @@ function refreshWeeks(){
   try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(WK_PREFIX))keys.push(k)}}catch(e){}
   keys.sort().reverse();
   const cur=week?WK_PREFIX+week.annee+'-'+pad(week.semaine):'';
+  $('delSel').innerHTML='<option value="">Supprimer une semaine…</option>'+keys.map(k=>{const [a,w]=k.slice(WK_PREFIX.length).split('-');return `<option value="${k}">Semaine ${+w} \u00b7 ${a}</option>`}).join('');
+  $('delSel').hidden=!keys.length;
   $('weeksSel').innerHTML='<option value="">\u2014 ouvrir une semaine \u2014</option>'+keys.map(k=>{const [a,w]=k.slice(WK_PREFIX.length).split('-');return `<option value="${k}" ${k===cur?'selected':''}>Semaine ${+w} \u00b7 ${a}</option>`}).join('');
 }
 function openWeekKey(k,step){
@@ -1136,7 +1136,7 @@ function localState(){
   const weeks={};
   try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(WK_PREFIX)){try{weeks[k]=JSON.parse(localStorage.getItem(k))}catch(_){}}}}catch(_){}
   const at=LS.get('slvs-meta-at',{});
-  return {v:1,roster:{names:LS.get('slvs-roster',null),at:at.roster||0},assign:{data:LS.get('slvs-assign',{}),at:at.assign||0},nums:{data:LS.get('slvs-nums',[]),at:at.nums||0},weeks,hist:LS.get('slvs-hist',{})};
+  return {v:1,roster:{names:LS.get('slvs-roster',null),at:at.roster||0},assign:{data:LS.get('slvs-assign',{}),at:at.assign||0},nums:{data:LS.get('slvs-nums',[]),at:at.nums||0},weeks,hist:LS.get('slvs-hist',{}),del:LS.get('slvs-del',{})};
 }
 function hasHours(w){return !!(w&&w.grid&&w.grid.some(g=>g.some(x=>x&&x.h)))}
 function mergeHist(a,b){
@@ -1156,7 +1156,9 @@ function mergeStates(a,b){
   const nums={at:Math.max(a.nums&&a.nums.at||0,b.nums&&b.nums.at||0),data:[...new Set([...(nA[0]&&nA[0].data||[]),...(nA[1]&&nA[1].data||[])])].slice(0,40)};
   const weeks=Object.assign({},b.weeks||{});
   Object.keys(a.weeks||{}).forEach(k=>{if(!weeks[k]||((a.weeks[k].updated||0)>=(weeks[k].updated||0)))weeks[k]=a.weeks[k]});
-  return {v:1,roster:r||{names:null,at:0},assign:assignM,nums,weeks,hist:mergeHist(a.hist,b.hist)};
+  const del=Object.assign({},b.del||{});Object.keys(a.del||{}).forEach(k=>{del[k]=Math.max(del[k]||0,a.del[k])});
+  Object.keys(del).forEach(k=>{if(weeks[k]&&del[k]>=(weeks[k].updated||0))delete weeks[k]});
+  return {v:1,roster:r||{names:null,at:0},assign:assignM,nums,weeks,hist:mergeHist(a.hist,b.hist),del};
 }
 function applyState(m){
   const ch={roster:false,weeks:[]};
@@ -1165,6 +1167,7 @@ function applyState(m){
   if(m.assign&&(m.assign.at||0)>(at.assign||0)){LS.set('slvs-assign',m.assign.data||{});at.assign=m.assign.at;assign=m.assign.data||{}}
   if(m.nums&&(m.nums.at||0)>(at.nums||0)){LS.set('slvs-nums',m.nums.data||[]);at.nums=m.nums.at}
   LS.set('slvs-meta-at',at);
+  {const dl=LS.get('slvs-del',{});Object.keys(m.del||{}).forEach(k=>{dl[k]=Math.max(dl[k]||0,m.del[k]);const cur=LS.get(k,null);if(cur&&m.del[k]>=(cur.updated||0)){histAdd(k,cur);LS.del(k);ch.del=true}});LS.set('slvs-del',dl)}
   Object.keys(m.weeks||{}).forEach(k=>{
     const cur=LS.get(k,null);
     if(!cur||(m.weeks[k].updated||0)>(cur.updated||0)){if(cur&&JSON.stringify(cur.grid)!==JSON.stringify(m.weeks[k].grid))histAdd(k,cur);LS.set(k,m.weeks[k]);ch.weeks.push(k)}
@@ -1215,7 +1218,7 @@ async function syncNow(){
     const loc=localState();
     const merged=remote?mergeStates(loc,remote):loc;
     ch=applyState(merged);
-    merged.hist=LS.get('slvs-hist',{});
+    merged.hist=LS.get('slvs-hist',{});merged.del=LS.get('slvs-del',{});
     if(!remote||JSON.stringify(remote)!==JSON.stringify(merged))await be.write(merged);
     const d=new Date();setSyncUi('✓ Synchronisé à '+pad(d.getHours())+':'+pad(d.getMinutes()));
     refreshDL();refreshWeeks();
@@ -1281,6 +1284,15 @@ function refreshHist(){
   sel.hidden=!L.length;
   sel.innerHTML='<option value="">Versions précédentes remplacées…</option>'+L.join('');
 }
+$('delSel').onchange=e=>{
+  const k=e.target.value;e.target.value='';if(!k)return;
+  const [a,w]=k.slice(WK_PREFIX.length).split('-');
+  if(!confirm(`Supprimer la semaine ${+w} · ${a} ? (elle restera récupérable dans « Versions précédentes »)`))return;
+  const cur=LS.get(k,null);if(cur)histAdd(k,cur);
+  LS.del(k);const dl=LS.get('slvs-del',{});dl[k]=Date.now();LS.set('slvs-del',dl);
+  if(week&&k===WK_PREFIX+week.annee+'-'+pad(week.semaine)){reset();sample=false;extraMsgs=[];render()}
+  refreshWeeks();refreshHist();scheduleSync();toast(`Semaine ${+w} supprimée`);
+};
 $('histSel').onchange=e=>{
   const v=e.target.value;if(!v)return;
   const [k,i]=v.split('|'),ent=(LS.get('slvs-hist',{})[k]||[])[+i];if(!ent)return;

@@ -158,6 +158,7 @@ button.sm{padding:5px 11px;font-size:.85rem}
   #pay table.xl tfoot td{font-size:16pt;border-top:2.5px solid #000}
   #pay .sig{font-size:11pt;margin-top:18px}
   #pay{zoom:var(--pz,1)}
+  #pay .dl{font-size:9.5pt;font-weight:700}
   #pay #payTable tbody tr td{border-bottom:2px solid #333!important}
   #pay #payTable tbody tr:nth-child(odd) td:not(.tot){background:#fff!important}
   #pay #payTable tbody tr:nth-child(even) td:not(.tot){background:#EDE6E0!important}
@@ -250,6 +251,8 @@ table.xl thead th{display:none}
 .chips label.gk.abs{border-style:dashed}
 .dep{font-family:var(--font-mono);font-weight:700;font-size:1.05em}
 .dep-l{display:block;font-size:.82em;line-height:1.35}
+.dl{display:block;font-family:var(--font);font-size:.62em;font-weight:700;line-height:1.2;color:var(--accent);white-space:nowrap}
+.dl-no{color:var(--warn)}.dl-ex{color:var(--muted);font-weight:500}
 .dep-w{display:block;font-size:.82em;font-weight:700;color:var(--warn)}
 .absrow{display:flex;flex-direction:column;gap:6px}
 .abstitle{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
@@ -1003,18 +1006,22 @@ function absOf(ci){const a=(cols[ci]&&cols[ci].abs)||[];return DAYS.map((_,d)=>a
 function hasAbs(ci){return absOf(ci).some(Boolean)}
 function absTxt(a){const n={};a.forEach(x=>{if(x)n[x]=(n[x]||0)+1});return Object.keys(n).map(k=>`${ABSN[k]||k} ${n[k]} j`).join(' \u00b7 ')}
 function absSelects(a,attr){return DAYS.map((d,i)=>`<label>${d.slice(0,3)}<select ${attr}="${i}" aria-label="Absence ${d}" title="Absence ${d}">${ABSO.map(o=>`<option value="${o[0]}" ${(a[i]||'')===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></label>`).join('')}
+const NODEPSHOW='sans lieu';
 const NODEP=/^(atelier|slvs|d[eé]p[oô]t|bureau|dieppe atelier)$/i;
 function depOf(ci){
-  const per=new Map();let days=0,nolieu=0,split=0;
-  grid[ci].forEach(x=>{
+  /* 1 seul déplacement par jour : le lieu où la personne a fait le plus d'heures ce jour-là */
+  const per=new Map(),byDay=['','','','','','',''];let days=0,nolieu=0;
+  let lines=null;try{lines=guessLines(ci)}catch(_){}
+  grid[ci].forEach((x,d)=>{
     if(!x.h)return;
-    const ls=(x.lieu||'').split(' / ').map(v=>v.trim()).filter(v=>v&&!NODEP.test(v));
-    if(!(x.lieu||'').trim())nolieu++;
-    if(ls.length)days++;
-    if(ls.length>1)split++;
-    ls.forEach(l=>per.set(l,(per.get(l)||0)+1));
+    if(!(x.lieu||'').trim()){nolieu++;byDay[d]='?';return}
+    const cand=(x.lieu||'').split(' / ').map(v=>v.trim()).filter(v=>v&&!NODEP.test(v));
+    if(!cand.length){byDay[d]='~'+x.lieu;return}
+    let best=cand[0],bh=-1;
+    if(lines&&cand.length>1)cand.forEach(l=>{const h=lines.filter(L=>(L.lieu||'').trim()===l).reduce((a,L)=>a+(num(L.hd[d])||0),0);if(h>bh){bh=h;best=l}});
+    byDay[d]=best;days++;per.set(best,(per.get(best)||0)+1);
   });
-  return {days,nolieu,split,per:[...per.entries()]};
+  return {days,nolieu,split:0,byDay,per:[...per.entries()]};
 }
 function depTxt(d){return d.per.map(([l,n])=>`${l} ${n} j`).join(' · ')}
 function payRows(){
@@ -1031,26 +1038,26 @@ function renderPay(){
   if(!rows.length){$('payTable').innerHTML='<tbody><tr><td class="l">Aucune heure saisie.</td></tr></tbody>';return}
   const ds=DAYS.map((_,d)=>rows.reduce((a,r)=>a+r.days[d],0));
   const gt=rows.reduce((a,r)=>a+r.tot,0);
-  {const ln=r=>1+(r.dep.per.length?1:0)+(r.dep.split?1:0)+(r.dep.nolieu?1:0)+(r.absTxt?1:0);
+  {const ln=r=>1+(r.dep.per.length?1:0)+(r.dep.nolieu?1:0)+(r.absTxt?1:0);
    const nAff=Math.max(1,Math.ceil(affGroups().rows.length/10));
-   const H=430+rows.reduce((a,r)=>a+Math.max(46,29+ln(r)*20),0)+(nAff-1)*90;
+   const H=430+rows.reduce((a,r)=>a+Math.max(62,38+ln(r)*20),0)+(nAff-1)*90;
    $('pay').style.setProperty('--pz',Math.max(.35,Math.min(1,680/H)).toFixed(3));}
-  const cell=(h,we,code)=>`<td class="mono ${we?'we':''} ${h||code?'':'zero'} ${code?'abscell':''}">${h?fmt(h)+(code?' +'+code:''):(code||'\u00b7')}</td>`;
+  const cell=(h,we,code,dl)=>`<td class="mono ${we?'we':''} ${h||code?'':'zero'} ${code?'abscell':''}">${h?fmt(h)+(code?' +'+code:''):(code||'\u00b7')}${h?(dl==='?'?'<span class="dl dl-no">sans lieu</span>':dl&&dl[0]==='~'?`<span class="dl dl-ex">${esc(dl.slice(1))}</span>`:dl?`<span class="dl">\u2192 ${esc(dl)}</span>`:''):''}</td>`;
   $('payTable').innerHTML='<thead><tr><th class="l">Nom</th>'+DAYS.map((d,i)=>`<th class="${i>4?'we':''}">${d.slice(0,3)}</th>`).join('')+`<th>Total</th><th class="l">Déplacements</th></tr></thead><tbody>`+
-   rows.map(r=>`<tr><td class="l nm">${esc(r.name)}</td>`+r.days.map((h,i)=>cell(h,i>4,r.abs[i])).join('')+`<td class="mono tot">${fmt(r.tot)}</td><td class="lx"><span class="dep">${r.dep.days}</span> <small>dépl.</small>${r.dep.per.map(([l,n])=>`<span class="dep-l">${esc(l)} : ${n} j</span>`).join('')}${r.dep.split?`<span class="dep-l"><i>dont ${r.dep.split} j sur 2 chantiers</i></span>`:''}${r.dep.nolieu?`<span class="dep-w">${r.dep.nolieu} j sans lieu</span>`:''}${r.absTxt?'<span class="dep-l"><b>'+esc(r.absTxt)+'</b></span>':''}</td></tr>`).join('')+
+   rows.map(r=>`<tr><td class="l nm">${esc(r.name)}</td>`+r.days.map((h,i)=>cell(h,i>4,r.abs[i],r.dep.byDay[i])).join('')+`<td class="mono tot">${fmt(r.tot)}</td><td class="lx"><span class="dep">${r.dep.days}</span> <small>dépl.</small>${r.dep.per.map(([l,n])=>`<span class="dep-l">${esc(l)} : ${n} j</span>`).join('')}${r.dep.nolieu?`<span class="dep-w">${r.dep.nolieu} j sans lieu</span>`:''}${r.absTxt?'<span class="dep-l"><b>'+esc(r.absTxt)+'</b></span>':''}</td></tr>`).join('')+
    `</tbody><tfoot><tr><th>Total</th>`+ds.map(h=>`<td class="mono">${h?fmt(h):''}</td>`).join('')+`<td class="mono">${fmt(gt)}</td><td class="lx"><span class="dep">${rows.reduce((a,r)=>a+r.dep.days,0)}</span> <small>dépl.</small></td></tr></tfoot>`;
 }
 $('payCopy').onclick=()=>{
   const rows=payRows();
   const L=[['Nom',...DAYS.map(d=>d.slice(0,3)),'Total','Déplacements (jours)','Détail par lieu'].join('\t')];
-  rows.forEach(r=>L.push([r.name,...r.days.map((h,i)=>h?fmt(h)+(r.abs[i]?' +'+r.abs[i]:''):(r.abs[i]||'')),fmt(r.tot),r.dep.days,[depTxt(r.dep)+(r.dep.split?' (dont '+r.dep.split+' j sur 2 chantiers)':''),r.absTxt].filter(Boolean).join(' — ')].join('\t')));
+  rows.forEach(r=>L.push([r.name,...r.days.map((h,i)=>h?fmt(h)+(r.abs[i]?' +'+r.abs[i]:''):(r.abs[i]||'')),fmt(r.tot),r.dep.days,[depTxt(r.dep)+(r.dep.split?'':''),r.absTxt].filter(Boolean).join(' — ')].join('\t')));
   copyText(L.join('\n'),'Résumé copié');
 };
 
 function mailText(){
   const wk=week?`Semaine ${week.semaine} ${week.annee}`:'Pointage';
   const L=[`Pointage SLVS — ${wk}`,''];
-  payRows().forEach(r=>L.push(`${r.name} : ${DAYS.map((d,i)=>r.days[i]?d.slice(0,3)+' '+fmt(r.days[i]):(r.abs[i]?d.slice(0,3)+' '+r.abs[i]:'')).filter(Boolean).join(', ')} — total ${fmt(r.tot)} h — ${r.dep.days} déplacement${r.dep.days>1?'s':''}${r.dep.per.length?' ('+depTxt(r.dep)+(r.dep.split?', dont '+r.dep.split+' j sur 2 chantiers':'')+')':''}${r.absTxt?' ['+r.absTxt+']':''}`));
+  payRows().forEach(r=>L.push(`${r.name} : ${DAYS.map((d,i)=>r.days[i]?d.slice(0,3)+' '+fmt(r.days[i]):(r.abs[i]?d.slice(0,3)+' '+r.abs[i]:'')).filter(Boolean).join(', ')} — total ${fmt(r.tot)} h — ${r.dep.days} déplacement${r.dep.days>1?'s':''}${r.dep.per.length?' ('+depTxt(r.dep)+''+')':''}${r.absTxt?' ['+r.absTxt+']':''}`));
   const g=affGroups().rows;
   if(g.length){L.push('','Heures par n° de devis / régie :');g.forEach(x=>L.push(`${x.num||'(sans n°) '+[...x.travs].join(' / ')} : ${fmt(x.tot)} h`))}
   return {subject:`Pointage SLVS ${wk}`,body:L.join('\n')};

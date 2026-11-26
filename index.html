@@ -278,7 +278,7 @@ body{margin:0}
       <label class="wk">Semaines enregistrées <select id="weeksSel"></select></label>
       <div class="sub" id="syncLine"><span id="syncState"></span> <button class="ghost sm" id="syncBtn" type="button">Synchroniser mes appareils</button></div>
     </div>
-    <div class="btns"><button class="ghost" id="clearBtn">Tout vider</button></div>
+    <div class="btns"><button class="ghost" id="bkBtn" type="button">Sauvegarder (.json)</button><button class="ghost" id="rsBtn" type="button">Restaurer une sauvegarde</button><select id="histSel" aria-label="Versions précédentes" hidden></select><input type="file" id="rsFile" accept=".json,application/json" hidden><button class="ghost" id="clearBtn">Tout vider</button></div>
   </div>
 
   <section class="panel" id="syncPanel" hidden>
@@ -502,6 +502,7 @@ async function handleFiles(files){
   for(const f of files){
     try{
       const r=JSON.parse(await f.text());
+      if(r&&r.slvs_backup){importBackup(r);return}
       if(!Array.isArray(r.lignes)){msgs.push(`${f.name} : ce n'est pas un rapport hebdomadaire.`);continue}
       const res=loadReport(r,f.name);
       if(!res.ok)msgs.push(res.msg);
@@ -1093,8 +1094,10 @@ function refreshWeeks(){
   $('weeksSel').innerHTML='<option value="">\u2014 ouvrir une semaine \u2014</option>'+keys.map(k=>{const [a,w]=k.slice(WK_PREFIX.length).split('-');return `<option value="${k}" ${k===cur?'selected':''}>Semaine ${+w} \u00b7 ${a}</option>`}).join('');
 }
 function openWeekKey(k,step){
+  try{return openWeekData(JSON.parse(localStorage.getItem(k)),step)}catch(err){toast('Semaine illisible');return false}
+}
+function openWeekData(d,step){
   try{
-    const d=JSON.parse(localStorage.getItem(k));
     cols=d.cols;grid=d.grid;reports=d.reports;alloc=d.alloc||{};curAt=d.updated||0;
     const m=d.week.monday?d.week.monday.split('-').map(Number):null;
     week={semaine:d.week.semaine,annee:d.week.annee,monday:m?new Date(m[0],m[1]-1,m[2]):null};
@@ -1133,7 +1136,17 @@ function localState(){
   const weeks={};
   try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(WK_PREFIX)){try{weeks[k]=JSON.parse(localStorage.getItem(k))}catch(_){}}}}catch(_){}
   const at=LS.get('slvs-meta-at',{});
-  return {v:1,roster:{names:LS.get('slvs-roster',null),at:at.roster||0},assign:{data:LS.get('slvs-assign',{}),at:at.assign||0},nums:{data:LS.get('slvs-nums',[]),at:at.nums||0},weeks};
+  return {v:1,roster:{names:LS.get('slvs-roster',null),at:at.roster||0},assign:{data:LS.get('slvs-assign',{}),at:at.assign||0},nums:{data:LS.get('slvs-nums',[]),at:at.nums||0},weeks,hist:LS.get('slvs-hist',{})};
+}
+function hasHours(w){return !!(w&&w.grid&&w.grid.some(g=>g.some(x=>x&&x.h)))}
+function mergeHist(a,b){
+  const o={};[a||{},b||{}].forEach(h=>Object.keys(h).forEach(k=>{(h[k]||[]).forEach(e=>{if(!e||!e.w)return;o[k]=o[k]||[];if(!o[k].some(x=>x.w.updated===e.w.updated))o[k].push(e)})}));
+  Object.keys(o).forEach(k=>{o[k].sort((x,y)=>(y.w.updated||0)-(x.w.updated||0));o[k]=o[k].slice(0,4)});
+  return o;
+}
+function histAdd(k,w){
+  if(!hasHours(w)||!w.updated)return;
+  LS.set('slvs-hist',mergeHist(LS.get('slvs-hist',{}),{[k]:[{at:Date.now(),w}]}));
 }
 function mergeStates(a,b){
   const r=(a.roster&&a.roster.at)>=(b.roster&&b.roster.at)?a.roster:b.roster;
@@ -1143,7 +1156,7 @@ function mergeStates(a,b){
   const nums={at:Math.max(a.nums&&a.nums.at||0,b.nums&&b.nums.at||0),data:[...new Set([...(nA[0]&&nA[0].data||[]),...(nA[1]&&nA[1].data||[])])].slice(0,40)};
   const weeks=Object.assign({},b.weeks||{});
   Object.keys(a.weeks||{}).forEach(k=>{if(!weeks[k]||((a.weeks[k].updated||0)>=(weeks[k].updated||0)))weeks[k]=a.weeks[k]});
-  return {v:1,roster:r||{names:null,at:0},assign:assignM,nums,weeks};
+  return {v:1,roster:r||{names:null,at:0},assign:assignM,nums,weeks,hist:mergeHist(a.hist,b.hist)};
 }
 function applyState(m){
   const ch={roster:false,weeks:[]};
@@ -1154,8 +1167,10 @@ function applyState(m){
   LS.set('slvs-meta-at',at);
   Object.keys(m.weeks||{}).forEach(k=>{
     const cur=LS.get(k,null);
-    if(!cur||(m.weeks[k].updated||0)>(cur.updated||0)){LS.set(k,m.weeks[k]);ch.weeks.push(k)}
+    if(!cur||(m.weeks[k].updated||0)>(cur.updated||0)){if(cur&&JSON.stringify(cur.grid)!==JSON.stringify(m.weeks[k].grid))histAdd(k,cur);LS.set(k,m.weeks[k]);ch.weeks.push(k)}
   });
+  LS.set('slvs-hist',mergeHist(LS.get('slvs-hist',{}),m.hist));
+  try{refreshHist()}catch(_){}
   return ch;
 }
 async function gh(path,opt){
@@ -1200,6 +1215,7 @@ async function syncNow(){
     const loc=localState();
     const merged=remote?mergeStates(loc,remote):loc;
     ch=applyState(merged);
+    merged.hist=LS.get('slvs-hist',{});
     if(!remote||JSON.stringify(remote)!==JSON.stringify(merged))await be.write(merged);
     const d=new Date();setSyncUi('✓ Synchronisé à '+pad(d.getHours())+':'+pad(d.getMinutes()));
     refreshDL();refreshWeeks();
@@ -1219,7 +1235,60 @@ $('ghSave').onclick=async()=>{
   if(LS.get('slvs-gh-token',null)){$('syncPanel').hidden=true;toast('Synchronisation activée');if(ch&&(ch.roster||ch.weeks.length)&&!acted){const k=latestWeekKey();if(k)openWeekKey(k,4)}}
 };
 $('ghOff').onclick=()=>{LS.del('slvs-gh-token');LS.del('slvs-gh-gist');$('syncPanel').hidden=true;setSyncUi('Enregistré sur cet appareil seulement');toast('Synchronisation désactivée')};
-refreshWeeks();
+/* ===== Sauvegarde / restauration ===== */
+function dl(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function exportBackup(){
+  if(week&&!sample)saveWeek();
+  const st=localState();const n=Object.keys(st.weeks).length;
+  const d=new Date();
+  dl(`pointage-sauvegarde-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.json`,JSON.stringify(Object.assign({slvs_backup:1,exported:d.toISOString()},st)));
+  toast(n?`Sauvegarde téléchargée (${n} semaine${n>1?'s':''})`:'Sauvegarde téléchargée (aucune semaine enregistrée)');
+}
+function importBackup(r){
+  let n=0,t=Date.now();
+  Object.keys(r.weeks||{}).forEach(k=>{
+    if(!k.startsWith(WK_PREFIX)||!r.weeks[k]||!r.weeks[k].grid)return;
+    const cur=LS.get(k,null);
+    if(cur&&JSON.stringify(cur.grid)!==JSON.stringify(r.weeks[k].grid))histAdd(k,cur);
+    const w=Object.assign({},r.weeks[k],{updated:++t});
+    LS.set(k,w);n++;
+  });
+  if(r.roster&&Array.isArray(r.roster.names)&&r.roster.names.length){LS.set('slvs-roster',r.roster.names);touch('roster')}
+  if(r.assign&&r.assign.data){LS.set('slvs-assign',Object.assign({},LS.get('slvs-assign',{}),r.assign.data));touch('assign')}
+  if(r.nums&&Array.isArray(r.nums.data)){LS.set('slvs-nums',[...new Set([...(LS.get('slvs-nums',[])),...r.nums.data])].slice(0,40));touch('nums')}
+  LS.set('slvs-hist',mergeHist(LS.get('slvs-hist',{}),r.hist));
+  refreshWeeks();refreshHist();scheduleSync();
+  const k=latestWeekKey();if(n&&k){acted=true;openWeekKey(k,4)}
+  toast(n?`Sauvegarde restaurée : ${n} semaine${n>1?'s':''}`:'Sauvegarde lue (aucune semaine dedans)');
+  return n;
+}
+$('bkBtn').onclick=exportBackup;
+$('rsBtn').onclick=()=>$('rsFile').click();
+$('rsFile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const r=JSON.parse(await f.text());
+    if(!r.slvs_backup){toast("Ce fichier n'est pas une sauvegarde du pointage");return}
+    importBackup(r);
+  }catch(_){toast('Fichier illisible')}
+};
+function refreshHist(){
+  const h=LS.get('slvs-hist',{}),sel=$('histSel'),L=[];
+  Object.keys(h).sort().reverse().forEach(k=>h[k].forEach((e,i)=>{
+    const [a,w]=k.slice(WK_PREFIX.length).split('-'),d=new Date(e.w.updated||e.at);
+    const hrs=e.w.grid.reduce((s,g)=>s+g.reduce((x,y)=>x+(y&&y.h||0),0),0);
+    L.push(`<option value="${k}|${i}">Semaine ${+w} · ${a} — version du ${pad(d.getDate())}/${pad(d.getMonth()+1)} ${pad(d.getHours())}:${pad(d.getMinutes())} (${fmt(hrs)} h)</option>`);
+  }));
+  sel.hidden=!L.length;
+  sel.innerHTML='<option value="">Versions précédentes remplacées…</option>'+L.join('');
+}
+$('histSel').onchange=e=>{
+  const v=e.target.value;if(!v)return;
+  const [k,i]=v.split('|'),ent=(LS.get('slvs-hist',{})[k]||[])[+i];if(!ent)return;
+  const cur=LS.get(k,null);if(cur&&JSON.stringify(cur.grid)!==JSON.stringify(ent.w.grid))histAdd(k,cur);
+  LS.set(k,Object.assign({},ent.w,{updated:Date.now()}));
+  refreshWeeks();refreshHist();scheduleSync();acted=true;openWeekKey(k,4);toast('Version précédente remise en place');
+};
+refreshWeeks();refreshHist();
 reset();sample=true;loadReport(SAMPLE,'S45-2026-cedric-toutain.json');goStep(1);
 (async()=>{
   try{if(window.claude&&window.claude.use){dbRef=await window.claude.use('db')}}catch(e){dbRef=null}
